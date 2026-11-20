@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-black text-white antialiased">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blog &amp; Technical Publications | Grey Circuit Technologies</title>
+  <meta name="description"
+    content="Technical publications, cybersecurity threat intelligence, and engineering field notes from Grey Circuit Technologies.">
+  <link rel="canonical" href="https://blog.greycircuit.tech/">
+
+  <!-- OpenGraph -->
+  <meta property="og:title" content="Blog &amp; Technical Publications | Grey Circuit Technologies">
+  <meta property="og:description"
+    content="Technical publications, cybersecurity threat intelligence, and engineering field notes from Grey Circuit Technologies.">
+  <meta property="og:url" content="https://blog.greycircuit.tech/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Grey Circuit Technologies">
+  <meta property="og:image" content="https://greycircuit.tech/assets/logo_transparent.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Blog &amp; Technical Publications | Grey Circuit Technologies">
+  <meta name="twitter:description"
+    content="Technical publications, cybersecurity threat intelligence, and engineering field notes from Grey Circuit Technologies.">
+  <meta name="twitter:image" content="https://greycircuit.tech/assets/logo_transparent.png">
+
+  <!-- Fonts: Inter, Space Grotesk, JetBrains Mono (Exact Corporate Typeface Suite) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <!-- Core GreyCircuit Design System Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+
+  <style>
+    /* Scoped editorial extensions using corporate design tokens */
+    .blog-hero {
+      position: relative;
+      padding-top: clamp(7.5rem, 13vw, 10.5rem);
+      padding-bottom: clamp(3rem, 6vw, 4.5rem);
+      background-color: var(--bg-obsidian);
+      border-bottom: 1px solid var(--border-subtle);
+      overflow: hidden;
+    }
+
+    .series-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 2.5rem;
+    }
+
+    .series-pill {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 8px 16px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      transition: all 0.25s var(--ease-out-expo);
+      cursor: pointer;
+    }
+
+    .series-pill:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--border-hover);
+    }
+
+    .series-pill.active {
+      background: #ffffff;
+      color: #070707;
+      border-color: #ffffff;
+      font-weight: 600;
+      box-shadow: 0 4px 20px rgba(255, 255, 255, 0.15);
+    }
+
+    .blog-feed-section {
+      padding-top: clamp(3.5rem, 6vw, 5rem);
+      padding-bottom: clamp(5rem, 9vw, 8rem);
+      background-color: var(--bg-slate);
+    }
+
+    .articles-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1.5rem;
+    }
+
+    .article-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 340px;
+      padding: 2rem;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .article-card h2,
+    .article-card h3 {
+      font-family: "Space Grotesk", sans-serif;
+      font-size: 1.35rem;
+      font-weight: 500;
+      line-height: 1.3;
+      letter-spacing: -0.025em;
+      color: #ffffff;
+      margin: 1rem 0 0.75rem;
+    }
+
+    .article-card p {
+      font-size: 0.88rem;
+      line-height: 1.6;
+      color: var(--text-secondary);
+      margin: 0 0 1.5rem;
+      flex-grow: 1;
+    }
+
+    .article-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 1rem;
+      margin-top: auto;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    @media (max-width: 1024px) {
+      .articles-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 680px) {
+      .articles-grid {
+        grid-template-columns: 1fr;
+      }
+      .article-card {
+        padding: 1.5rem;
+        min-height: auto;
+      }
+    }
+  </style>
+</head>
+
+<body class="selection-invert">
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <div class="noise-overlay" aria-hidden="true"></div>
+  <div id="cursor-dot" aria-hidden="true"></div>
+  <div id="cursor-ring" aria-hidden="true"></div>
+
+  <!-- Primary Navigation (Dynamic Island + Mobile Slide-Out Drawer) -->
+  <header>
+    <nav class="dynamic-island" id="site-nav" aria-label="Primary navigation">
+      <div class="island-shell">
+        <a href="https://greycircuit.tech" class="island-brand" aria-label="Grey Circuit Technologies home">
+          <img src="assets/logo_transparent.png" alt="" width="20" height="23" decoding="async">
+          <span>GREY CIRCUIT</span>
+        </a>
+        <div class="island-divider" aria-hidden="true"></div>
+
+        <div class="island-links-desktop">
+          <a href="https://greycircuit.tech#about" class="island-link magnetic" data-magnetic>About</a>
+
+          <div class="nav-dropdown">
+            <button type="button" class="island-link nav-dropdown-trigger magnetic" data-magnetic
+              aria-expanded="false" aria-haspopup="true">
+              Services <span class="nav-chevron" aria-hidden="true">+</span>
+            </button>
+            <div class="nav-dropdown-menu" role="menu">
+              <a href="https://greycircuit.tech/services/cybersecurity-service/cybersecurity.html"
+                role="menuitem">Cybersecurity</a>
+              <a href="https://greycircuit.tech/services/automation-service/automation.html" role="menuitem">Automation</a>
+              <a href="https://greycircuit.tech/services/swe-service/software-engineering.html" role="menuitem">Software
+                Engineering</a>
+              <a href="https://greycircuit.tech/services/" role="menuitem">All Capabilities →</a>
+            </div>
+          </div>
+
+          <a href="https://greycircuit.tech/projects/project.html" class="island-link magnetic" data-magnetic>Projects</a>
+          <a href="https://greycircuit.tech#industries" class="island-link magnetic" data-magnetic>Industries</a>
+          <a href="https://greycircuit.tech#approach" class="island-link magnetic" data-magnetic>Approach</a>
+          <a href="https://blog.greycircuit.tech" class="island-link magnetic is-active-section" data-magnetic>Blog</a>
+        </div>
+
+        <a href="https://greycircuit.tech#contact" class="island-contact magnetic" data-magnetic>Contact</a>
+
+        <button type="button" class="mobile-drawer-toggle" id="mobile-drawer-toggle" aria-expanded="false"
+          aria-controls="mobile-drawer" aria-label="Open navigation menu">
+          <span class="hamburger-bar"></span>
+          <span class="hamburger-bar"></span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Accessible Mobile Slide-Out Drawer -->
+    <div class="mobile-drawer-backdrop" id="mobile-drawer-backdrop" hidden></div>
+    <aside class="mobile-drawer" id="mobile-drawer" aria-label="Mobile Navigation Drawer" aria-hidden="true">
+      <div class="mobile-drawer-header">
+        <span class="font-mono text-xs tracking-widest uppercase text-grey-400">NAVIGATION // GCT</span>
+        <button type="button" class="mobile-drawer-close" id="mobile-drawer-close"
+          aria-label="Close navigation menu">&times;</button>
+      </div>
+      <nav class="mobile-drawer-nav">
+        <a href="https://greycircuit.tech#about" class="mobile-drawer-link">01 / About Grey Circuit</a>
+        <a href="https://greycircuit.tech#founder" class="mobile-drawer-link">02 / Founder</a>
+        <a href="https://greycircuit.tech#services" class="mobile-drawer-link">03 / Core Capabilities</a>
+        <div class="mobile-drawer-sublinks">
+          <a href="https://greycircuit.tech/services/cybersecurity-service/cybersecurity.html">→ Cybersecurity</a>
+          <a href="https://greycircuit.tech/services/automation-service/automation.html">→ Automation</a>
+          <a href="https://greycircuit.tech/services/swe-service/software-engineering.html">→ Software Engineering</a>
+        </div>
+        <a href="https://greycircuit.tech/projects/project.html" class="mobile-drawer-link">04 / Selected Projects</a>
+        <a href="https://greycircuit.tech#industries" class="mobile-drawer-link">05 / Industries</a>
+        <a href="https://greycircuit.tech#approach" class="mobile-drawer-link">06 / Execution Model</a>
+        <a href="https://greycircuit.tech/whitepaper.html" class="mobile-drawer-link">07 / Whitepaper</a>
+        <a href="https://blog.greycircuit.tech" class="mobile-drawer-link active">08 / Blog</a>
+        <a href="https://greycircuit.tech#contact" class="mobile-drawer-cta">Start a Conversation ↗</a>
+      </nav>
+    </aside>
+  </header>
+
+  <main id="main-content">
+    <!-- Blog Hero Section (Obsidian Architecture) -->
+    <section class="blog-hero">
+      <div class="ambient-glow hero-glow" aria-hidden="true"></div>
+      <div class="container">
+        <div class="section-marker" style="margin-bottom: 1.25rem;">
+          <span class="section-index font-mono" aria-hidden="true">08</span>
+          <span class="section-kicker">Publications &amp; Threat Intelligence</span>
+        </div>
+
+        <h1 class="hero-title font-display" style="font-size: clamp(2.4rem, 5vw, 4rem); max-width: 900px; margin-bottom: 1.25rem;">
+          Engineering Field Notes &amp; Intelligence.
+        </h1>
+
+        <p class="hero-desc" style="max-width: 720px; font-size: 1.05rem; line-height: 1.6; color: var(--text-secondary); margin: 0;">
+          Deep-dive technical threat research, architectural whitepapers, and operational post-mortems authored by Grey Circuit Technologies.
+        </p>
+      </div>
+    </section>
+
+    <!-- Publications Feed Section (Slate Architecture) -->
+    <section class="blog-feed-section">
+      <div class="container">
+        <!-- Search and Filter Toolbar -->
+        <div class="blog-search-toolbar">
+          <div class="blog-search-wrap">
+            <div class="blog-search-input-shell">
+              <svg class="blog-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="blog-search-input" class="blog-search-input font-inter" placeholder="Search publications by title, research topic, or keyword..." autocomplete="off" spellcheck="false">
+              <button type="button" id="blog-search-clear" class="blog-search-clear" aria-label="Clear search" style="display: none;">&times;</button>
+              <div class="blog-search-shortcut font-jetbrains" title="Press / to focus search">/</div>
+            </div>
+
+            <!-- Dynamic Search Suggestions Dropdown -->
+            <div id="blog-search-dropdown" class="blog-search-dropdown" style="display: none;" role="listbox">
+              <div id="blog-search-suggestions-list" class="blog-suggestions-list"></div>
+              <div class="blog-dropdown-footer font-jetbrains">
+                <span>Use &uarr; &darr; to navigate, <kbd>Enter</kbd> to open, <kbd>Esc</kbd> to dismiss</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filter & Sort Toggle Button -->
+          <div class="blog-filter-toggle-wrap">
+            <button type="button" id="btn-toggle-filters" class="btn-filter-toggle font-jetbrains" aria-expanded="false" aria-controls="blog-filter-panel">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+              </svg>
+              <span>Filter &amp; Sort</span>
+              <span id="active-filters-badge" class="filter-badge" style="display: none;">0</span>
+            </button>
+
+            <!-- Filter & Sort Popover Panel -->
+            <div id="blog-filter-panel" class="blog-filter-panel" style="display: none;">
+              <div class="filter-panel-header">
+                <span class="font-space fw-bold text-white" style="font-size: 13px;">Filter &amp; Sort Publications</span>
+                <button type="button" id="btn-close-filter-panel" class="filter-panel-close">&times;</button>
+              </div>
+
+              <!-- Filter Series -->
+              <div class="filter-group">
+                <label class="filter-label font-jetbrains">Publication Series</label>
+                <div class="filter-chips-grid" id="panel-series-options">
+                  <button type="button" class="filter-choice-chip active" data-series="all">All Series</button>
+                  <button type="button" class="filter-choice-chip" data-series="gct-threatscape">GCT THREATSCAPE</button>
+                  <button type="button" class="filter-choice-chip" data-series="gct-field-notes">GCT Field Notes</button>
+                  <button type="button" class="filter-choice-chip" data-series="cybersecurity-intelligence">Cybersecurity Intelligence</button>
+                  <button type="button" class="filter-choice-chip" data-series="regulatory-compliance">Compliance &amp; Regulatory</button>
+                  <button type="button" class="filter-choice-chip" data-series="automation-engineering">Automation &amp; Engineering</button>
+                  <button type="button" class="filter-choice-chip" data-series="research-whitepapers">Research &amp; Whitepapers</button>
+                </div>
+              </div>
+
+              <!-- Sort Order -->
+              <div class="filter-group">
+                <label class="filter-label font-jetbrains">Sort Order</label>
+                <select id="panel-sort-select" class="filter-select font-jetbrains">
+                  <option value="newest" selected>Newest first (Default)</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="title-az">Title (A &rarr; Z)</option>
+                  <option value="title-za">Title (Z &rarr; A)</option>
+                  <option value="reading-asc">Reading Time (Shortest first)</option>
+                  <option value="reading-desc">Reading Time (Longest first)</option>
+                </select>
+              </div>
+
+              <!-- Date Range -->
+              <div class="filter-group">
+                <label class="filter-label font-jetbrains">Timeframe</label>
+                <select id="panel-date-select" class="filter-select font-jetbrains">
+                  <option value="all" selected>All Time</option>
+                  <option value="30d">Last 30 Days</option>
+                  <option value="90d">Last 90 Days</option>
+                  <option value="365d">Last 12 Months</option>
+                </select>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="filter-panel-actions">
+                <button type="button" id="btn-reset-filters" class="btn-filter-reset font-jetbrains">Reset All</button>
+                <button type="button" id="btn-apply-filters" class="btn-filter-apply font-jetbrains">Apply</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active Filter Removable Chips -->
+        <div id="active-filter-chips-bar" class="active-chips-bar" style="display: none;">
+          <span class="active-chips-label font-jetbrains">Active:</span>
+          <div id="active-chips-container" class="active-chips-container"></div>
+          <button type="button" id="btn-clear-all-chips" class="btn-clear-chips font-jetbrains">Clear All</button>
+        </div>
+
+        <!-- Results Counter & Status -->
+        <div class="results-meta-bar font-jetbrains">
+          <div id="results-count-text">Showing all publications</div>
+          <div class="text-muted" style="font-size: 10px;">FAIL-CLOSED SEARCH ENGINE</div>
+        </div>
+
+        <!-- Articles Grid Container -->
+        <div class="articles-grid" id="articles-container"></div>
+
+        <!-- Empty State Container -->
+        <div id="articles-empty-state" class="articles-empty-state" style="display: none;">
+          <div class="empty-icon-wrap">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#c4b5fd" stroke-width="1.5">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              <line x1="11" y1="8" x2="11" y2="12"></line>
+              <line x1="11" y1="14" x2="11.01" y2="14"></line>
+            </svg>
+          </div>
+          <h3 class="font-space text-white">No publications match your criteria</h3>
+          <p class="font-inter text-muted">We couldn't find any articles matching your search query or filter combination.</p>
+          <button type="button" id="btn-empty-reset" class="btn-empty-reset font-jetbrains">Reset All Filters</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Corporate Unified Footer -->
+  <footer class="site-footer-corporate" role="contentinfo">
+    <div class="footer-container">
+      <div class="footer-columns-grid">
+        <!-- Col 1: Brand & Headquarters -->
+        <div class="footer-col footer-col-brand">
+          <div class="footer-brand-header">
+            <img src="assets/logo_transparent.png" alt="GreyCircuit Logo" width="22" height="26" loading="lazy">
+            <span class="footer-brand-title font-space">GREYCIRCUIT</span>
+          </div>
+          <div class="footer-tagline font-jetbrains">Engineering Beyond Boundaries.</div>
+          <p class="footer-desc">
+            GreyCircuit Technologies Private Limited engineers high-assurance digital infrastructure, defends mission-critical assets, and automates enterprise workflows for forward-looking organizations.
+          </p>
+          <div class="footer-hq-badge font-jetbrains">
+            <span class="footer-dot-green"></span>
+            <span>Bengaluru, Karnataka, India &bull; Reg. CIN: U72900KA2023PTC176543</span>
+          </div>
+        </div>
+
+        <!-- Col 2: Capabilities & Services -->
+        <div class="footer-col">
+          <h4 class="footer-heading font-jetbrains">01 // CAPABILITIES</h4>
+          <ul class="footer-nav-list font-inter">
+            <li><a href="https://greycircuit.tech/services/cybersecurity-service/cybersecurity.html">Defensive Cybersecurity</a></li>
+            <li><a href="https://greycircuit.tech/services/cybersecurity-service/cybersecurity.html#zero-trust">Zero-Trust Architecture</a></li>
+            <li><a href="https://greycircuit.tech/services/swe-service/software-engineering.html">Cloud Infrastructure &amp; SRE</a></li>
+            <li><a href="https://greycircuit.tech/services/automation-service/automation.html">Enterprise Automation</a></li>
+            <li><a href="https://greycircuit.tech/services/swe-service/software-engineering.html">High-Scale Software Engineering</a></li>
+            <li><a href="https://greycircuit.tech/whitepaper.html">Technical Whitepapers</a></li>
+          </ul>
+        </div>
+
+        <!-- Col 3: Publications & Intelligence -->
+        <div class="footer-col">
+          <h4 class="footer-heading font-jetbrains">02 // PUBLICATIONS</h4>
+          <ul class="footer-nav-list font-inter">
+            <li><a href="index.html?series=gct-threatscape">GCT THREATSCAPE</a></li>
+            <li><a href="index.html?series=gct-field-notes">GCT Field Notes</a></li>
+            <li><a href="index.html?series=cybersecurity-intelligence">Cybersecurity Intelligence</a></li>
+            <li><a href="index.html?series=regulatory-compliance">Compliance &amp; Regulatory</a></li>
+            <li><a href="index.html?series=automation-engineering">Automation &amp; Engineering</a></li>
+            <li><a href="index.html?series=research-whitepapers">Research &amp; Whitepapers</a></li>
+          </ul>
+        </div>
+
+        <!-- Col 4: Connect & Governance -->
+        <div class="footer-col">
+          <h4 class="footer-heading font-jetbrains">03 // SECURITY &amp; CONTACT</h4>
+          <ul class="footer-nav-list font-inter">
+            <li><a href="mailto:security@greycircuit.tech"><span class="font-jetbrains" style="color: #666;">Desk:</span> security@greycircuit.tech</a></li>
+            <li><a href="mailto:contact@greycircuit.tech"><span class="font-jetbrains" style="color: #666;">Inquiries:</span> contact@greycircuit.tech</a></li>
+            <li><a href="https://greycircuit.tech#contact">Direct Engagement Portal</a></li>
+            <li><a href="https://greycircuit.tech/projects/project.html">Selected Client Work</a></li>
+          </ul>
+          <div class="footer-status-pill font-jetbrains">
+            <span class="footer-dot-green"></span>
+            <span>CONTROL PLANE: OPERATIONAL</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Bar -->
+      <div class="footer-bottom-bar font-jetbrains">
+        <div class="footer-copy">
+          &copy; 2026 GREYCIRCUIT TECHNOLOGIES PRIVATE LIMITED. All rights reserved.
+        </div>
+        <div class="footer-legal-links">
+          <span>Fail-Closed Edge Architecture</span>
+          <span class="footer-sep">&bull;</span>
+          <span>DPDP Act 2023 Aligned</span>
+          <span class="footer-sep">&bull;</span>
+          <span>ISO 27001 Posture</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Public Configuration & Dynamic Content Hydration Script -->
+  <script src="config.js"></script>
+  <script src="script.js" defer></script>
+  <script>
+    (() => {
+      // Baseline Comprehensive Publications Dataset covering all 6 configured series
+      const BASELINE_ARTICLES = [
+        {
+          id: 'art-001',
+          slug: 'architecting-resilient-zero-trust-perimeters',
+          title: 'Architecting Resilient Zero-Trust Perimeters for Mission-Critical Infrastructure',
+          series: 'gct-threatscape',
+          seriesName: 'GCT THREATSCAPE',
+          seriesAccent: '#f43f5e',
+          seriesTag: 'THREAT-INTEL',
+          excerpt: 'An architectural breakdown of perimeter defenses, continuous cryptographic verification, and operational resilience under persistent state-sponsored adversaries.',
+          author: 'Ajoy A G',
+          readingTime: 6,
+          publishedAt: '2026-11-15T09:00:00Z'
+        },
+        {
+          id: 'art-002',
+          slug: 'autonomous-workflow-orchestration-high-throughput',
+          title: 'Autonomous Workflow Orchestration in High-Throughput Environments',
+          series: 'automation-engineering',
+          seriesName: 'Automation & Engineering',
+          seriesAccent: '#10b981',
+          seriesTag: 'AUTOMATION',
+          excerpt: 'How autonomous deterministic pipelines reduce operational toil by 78% while guaranteeing strict auditability, immutable trace logging, and idempotent state transitions.',
+          author: 'Ajoy A G',
+          readingTime: 4,
+          publishedAt: '2026-11-10T14:30:00Z'
+        },
+        {
+          id: 'art-003',
+          slug: 'dpdp-act-2023-enterprise-compliance-blueprint',
+          title: 'India DPDP Act 2023: Technical Architecture & Compliance Blueprint for Financial Systems',
+          series: 'regulatory-compliance',
+          seriesName: 'Compliance & Regulatory',
+          seriesAccent: '#f59e0b',
+          seriesTag: 'REGULATORY',
+          excerpt: 'Translating statutory data protection mandates into concrete technical controls, data fiduciary boundaries, purpose limitation primitives, and verifiable consent architectures.',
+          author: 'Ajoy A G',
+          readingTime: 8,
+          publishedAt: '2026-11-05T11:00:00Z'
+        },
+        {
+          id: 'art-004',
+          slug: 'sovereign-cloud-infrastructure-resilience-patterns',
+          title: 'Sovereign Multi-Region Infrastructure: Resilience Patterns for High-Availability Workloads',
+          series: 'gct-field-notes',
+          seriesName: 'GCT Field Notes',
+          seriesAccent: '#38bdf8',
+          seriesTag: 'FIELD-OPS',
+          excerpt: 'Production lessons and architectural patterns from multi-region distributed deployments designed to sustain systemic cloud failures without data divergence.',
+          author: 'Ajoy A G',
+          readingTime: 7,
+          publishedAt: '2026-10-28T08:15:00Z'
+        },
+        {
+          id: 'art-005',
+          slug: 'adversary-emulation-frameworks-state-sponsored-threats',
+          title: 'Adversary Emulation & Defensive Validation Against Advanced Persistent Threats',
+          series: 'cybersecurity-intelligence',
+          seriesName: 'Cybersecurity Intelligence',
+          seriesAccent: '#7c3aed',
+          seriesTag: 'STRATEGIC-INTEL',
+          excerpt: 'Systematic methodologies for emulating adversary TTPs, measuring defensive detection surface coverage, and validating telemetry pipeline fidelity.',
+          author: 'Ajoy A G',
+          readingTime: 9,
+          publishedAt: '2026-10-20T16:45:00Z'
+        },
+        {
+          id: 'art-006',
+          slug: 'formal-verification-distributed-cryptographic-protocols',
+          title: 'Formal Verification of Distributed Cryptographic Protocols in High-Assurance Networks',
+          series: 'research-whitepapers',
+          seriesName: 'Research & Whitepapers',
+          seriesAccent: '#c4b5fd',
+          seriesTag: 'RESEARCH',
+          excerpt: 'Applying automated mathematical theorem proving to verify safety, liveness, and fault-tolerance invariants in distributed consensus algorithms.',
+          author: 'Ajoy A G',
+          readingTime: 11,
+          publishedAt: '2026-10-12T13:00:00Z'
+        }
+      ];
+
+      // Series metadata registry
+      const SERIES_MAP = {
+        'gct-threatscape': { name: 'GCT THREATSCAPE', accent: '#f43f5e', class: 'series-threatscape' },
+        'gct-field-notes': { name: 'GCT Field Notes', accent: '#38bdf8', class: 'series-field-notes' },
+        'cybersecurity-intelligence': { name: 'Cybersecurity Intelligence', accent: '#7c3aed', class: 'series-cybersecurity-intelligence' },
+        'regulatory-compliance': { name: 'Compliance & Regulatory', accent: '#f59e0b', class: 'series-regulatory-compliance' },
+        'automation-engineering': { name: 'Automation & Engineering', accent: '#10b981', class: 'series-automation-engineering' },
+        'research-whitepapers': { name: 'Research & Whitepapers', accent: '#c4b5fd', class: 'series-research-whitepapers' },
+        'threatscape': { name: 'GCT THREATSCAPE', accent: '#f43f5e', class: 'series-threatscape' },
+        'field-notes': { name: 'GCT Field Notes', accent: '#38bdf8', class: 'series-field-notes' }
+      };
+
+      let allArticles = [...BASELINE_ARTICLES];
+      let activeSeries = 'all';
+      let activeSearchQuery = '';
+      let activeSort = 'newest';
+      let activeTimeframe = 'all';
+      let selectedSuggestionIdx = -1;
+
+      // DOM Elements
+      const searchInput = document.getElementById('blog-search-input');
+      const searchClearBtn = document.getElementById('blog-search-clear');
+      const searchDropdown = document.getElementById('blog-search-dropdown');
+      const suggestionsList = document.getElementById('blog-search-suggestions-list');
+      const filterToggleBtn = document.getElementById('btn-toggle-filters');
+      const filterPanel = document.getElementById('blog-filter-panel');
+      const filterCloseBtn = document.getElementById('btn-close-filter-panel');
+      const filterBadge = document.getElementById('active-filters-badge');
+      const activeChipsBar = document.getElementById('active-filter-chips-bar');
+      const activeChipsContainer = document.getElementById('active-chips-container');
+      const clearAllChipsBtn = document.getElementById('btn-clear-all-chips');
+      const resultsCountText = document.getElementById('results-count-text');
+      const articlesContainer = document.getElementById('articles-container');
+      const emptyStateContainer = document.getElementById('articles-empty-state');
+      const emptyResetBtn = document.getElementById('btn-empty-reset');
+      const sortSelect = document.getElementById('panel-sort-select');
+      const dateSelect = document.getElementById('panel-date-select');
+      const applyFiltersBtn = document.getElementById('btn-apply-filters');
+      const resetFiltersBtn = document.getElementById('btn-reset-filters');
+      const panelSeriesChips = document.querySelectorAll('#panel-series-options .filter-choice-chip');
+
+      function escapeHtml(str) {
+        return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+
+      function highlightText(text, query) {
+        if (!query) return escapeHtml(text);
+        const safeText = escapeHtml(text);
+        const qSafe = escapeHtml(query);
+        const regex = new RegExp(`(${qSafe.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')})`, 'gi');
+        return safeText.replace(regex, '<mark class="suggestion-highlight">$1</mark>');
+      }
+
+      function getSeriesMeta(key) {
+        return SERIES_MAP[key] || { name: 'Technical Paper', accent: '#c4b5fd', class: 'series-cybersecurity-intelligence' };
+      }
+
+      // Check URL query parameters (e.g. ?series=gct-threatscape)
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('series')) {
+        const sParam = urlParams.get('series');
+        if (sParam) {
+          activeSeries = sParam;
+          panelSeriesChips.forEach(c => {
+            if (c.getAttribute('data-series') === sParam) c.classList.add('active');
+            else c.classList.remove('active');
+          });
+        }
+      }
+
+      // Filter, Sort, and Render Loop
+      function applyFiltersAndRender() {
+        let list = [...allArticles];
+
+        // 1. Series Filter
+        if (activeSeries && activeSeries !== 'all') {
+          list = list.filter(a => a.series === activeSeries || a.series === activeSeries.replace(/^gct-/, ''));
+        }
+
+        // 2. Keyword Search Query
+        const query = activeSearchQuery.toLowerCase().trim();
+        if (query) {
+          list = list.filter(a =>
+            a.title.toLowerCase().includes(query) ||
+            (a.excerpt || '').toLowerCase().includes(query) ||
+            (a.seriesName || '').toLowerCase().includes(query) ||
+            (a.author || '').toLowerCase().includes(query)
+          );
+        }
+
+        // 3. Timeframe Filter
+        if (activeTimeframe && activeTimeframe !== 'all') {
+          const now = Date.now();
+          const days = activeTimeframe === '30d' ? 30 : activeTimeframe === '90d' ? 90 : 365;
+          const cutoff = now - (days * 24 * 60 * 60 * 1000);
+          list = list.filter(a => new Date(a.publishedAt || a.created_at).getTime() >= cutoff);
+        }
+
+        // 4. Sort Order
+        if (activeSort === 'newest') {
+          list.sort((a, b) => new Date(b.publishedAt || b.created_at) - new Date(a.publishedAt || a.created_at));
+        } else if (activeSort === 'oldest') {
+          list.sort((a, b) => new Date(a.publishedAt || a.created_at) - new Date(b.publishedAt || b.created_at));
+        } else if (activeSort === 'title-az') {
+          list.sort((a, b) => a.title.localeCompare(b.title));
+        } else if (activeSort === 'title-za') {
+          list.sort((a, b) => b.title.localeCompare(a.title));
+        } else if (activeSort === 'reading-asc') {
+          list.sort((a, b) => (a.readingTime || 5) - (b.readingTime || 5));
+        } else if (activeSort === 'reading-desc') {
+          list.sort((a, b) => (b.readingTime || 5) - (a.readingTime || 5));
+        }
+
+        // Update Results Count Text
+        if (resultsCountText) {
+          if (query) {
+            resultsCountText.textContent = `Found ${list.length} ${list.length === 1 ? 'publication' : 'publications'} matching "${activeSearchQuery}"`;
+          } else if (activeSeries !== 'all') {
+            const sMeta = getSeriesMeta(activeSeries);
+            resultsCountText.textContent = `Showing ${list.length} ${list.length === 1 ? 'publication' : 'publications'} in ${sMeta.name}`;
+          } else {
+            resultsCountText.textContent = `Showing all ${list.length} publications`;
+          }
+        }
+
+        // Update Active Chips Bar & Badge
+        updateActiveChips();
+
+        // Render Cards or Empty State
+        if (list.length === 0) {
+          articlesContainer.style.display = 'none';
+          emptyStateContainer.style.display = 'block';
+        } else {
+          emptyStateContainer.style.display = 'none';
+          articlesContainer.style.display = 'grid';
+          articlesContainer.innerHTML = list.map(a => {
+            const meta = getSeriesMeta(a.series);
+            const dateStr = a.publishedAt ? new Date(a.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Nov 2026';
+
+            return `
+              <a href="article.html?slug=${encodeURIComponent(a.slug)}" class="insight-card glass-panel article-card ${meta.class}" data-series="${escapeHtml(a.series)}">
+                <div>
+                  <div class="status-pill font-mono text-2xs uppercase tracking-widest" style="width: fit-content; margin-bottom: 1.25rem; color: ${meta.accent}; border-color: ${meta.accent}44;">
+                    ${escapeHtml(a.seriesName || meta.name)}
+                  </div>
+                  <h2 class="font-display">${highlightText(a.title, query)}</h2>
+                  <p>${highlightText(a.excerpt || '', query)}</p>
+                </div>
+                <div class="article-meta font-mono text-2xs">
+                  <span>By ${escapeHtml(a.author || 'Ajoy A G')}</span>
+                  <span>${a.readingTime || a.reading_time_minutes || 5} min read • ${dateStr}</span>
+                </div>
+              </a>
+            `;
+          }).join('');
+        }
+      }
+
+      function updateActiveChips() {
+        let activeCount = 0;
+        const chips = [];
+
+        if (activeSeries !== 'all') {
+          activeCount++;
+          const sMeta = getSeriesMeta(activeSeries);
+          chips.push({ key: 'series', label: `Series: ${sMeta.name}` });
+        }
+
+        if (activeSearchQuery.trim()) {
+          activeCount++;
+          chips.push({ key: 'search', label: `Query: "${activeSearchQuery.trim()}"` });
+        }
+
+        if (activeTimeframe !== 'all') {
+          activeCount++;
+          const tfLabels = { '30d': 'Last 30 Days', '90d': 'Last 90 Days', '365d': 'Last 12 Months' };
+          chips.push({ key: 'timeframe', label: `Time: ${tfLabels[activeTimeframe] || activeTimeframe}` });
+        }
+
+        if (activeSort !== 'newest') {
+          activeCount++;
+          const sortLabels = {
+            'oldest': 'Sort: Oldest',
+            'title-az': 'Sort: A-Z',
+            'title-za': 'Sort: Z-A',
+            'reading-asc': 'Sort: Reading (Shortest)',
+            'reading-desc': 'Sort: Reading (Longest)'
+          };
+          chips.push({ key: 'sort', label: sortLabels[activeSort] || activeSort });
+        }
+
+        // Update Badge
+        if (filterBadge) {
+          if (activeCount > 0) {
+            filterBadge.style.display = 'inline-block';
+            filterBadge.textContent = activeCount;
+            filterToggleBtn.classList.add('is-active');
+          } else {
+            filterBadge.style.display = 'none';
+            filterToggleBtn.classList.remove('is-active');
+          }
+        }
+
+        // Render Chips
+        if (activeChipsBar && activeChipsContainer) {
+          if (chips.length > 0) {
+            activeChipsBar.style.display = 'flex';
+            activeChipsContainer.innerHTML = chips.map(c => `
+              <span class="active-chip font-jetbrains">
+                <span>${escapeHtml(c.label)}</span>
+                <span class="active-chip-remove" data-key="${c.key}">&times;</span>
+              </span>
+            `).join('');
+
+            activeChipsContainer.querySelectorAll('.active-chip-remove').forEach(rm => {
+              rm.addEventListener('click', () => {
+                const k = rm.getAttribute('data-key');
+                if (k === 'series') setSeries('all');
+                else if (k === 'search') clearSearch();
+                else if (k === 'timeframe') {
+                  activeTimeframe = 'all';
+                  if (dateSelect) dateSelect.value = 'all';
+                  applyFiltersAndRender();
+                } else if (k === 'sort') {
+                  activeSort = 'newest';
+                  if (sortSelect) sortSelect.value = 'newest';
+                  applyFiltersAndRender();
+                }
+              });
+            });
+          } else {
+            activeChipsBar.style.display = 'none';
+          }
+        }
+      }
+
+      function setSeries(sKey) {
+        activeSeries = sKey;
+        panelSeriesChips.forEach(c => {
+          if (c.getAttribute('data-series') === sKey) c.classList.add('active');
+          else c.classList.remove('active');
+        });
+        applyFiltersAndRender();
+      }
+
+      function clearSearch() {
+        if (searchInput) {
+          searchInput.value = '';
+          searchClearBtn.style.display = 'none';
+        }
+        activeSearchQuery = '';
+        closeDropdown();
+        applyFiltersAndRender();
+      }
+
+      function resetAllFilters() {
+        activeSeries = 'all';
+        activeSearchQuery = '';
+        activeSort = 'newest';
+        activeTimeframe = 'all';
+
+        if (searchInput) searchInput.value = '';
+        if (searchClearBtn) searchClearBtn.style.display = 'none';
+        if (sortSelect) sortSelect.value = 'newest';
+        if (dateSelect) dateSelect.value = 'all';
+
+        panelSeriesChips.forEach(c => {
+          if (c.getAttribute('data-series') === 'all') c.classList.add('active');
+          else c.classList.remove('active');
+        });
+
+        closeDropdown();
+        closeFilterPanel();
+        applyFiltersAndRender();
+      }
+
+      // Suggestions Dropdown Logic
+      function renderSuggestions(query) {
+        if (!suggestionsList || !searchDropdown) return;
+        const q = query.toLowerCase().trim();
+
+        if (q.length < 2) {
+          closeDropdown();
+          return;
+        }
+
+        const matches = allArticles.filter(a =>
+          a.title.toLowerCase().includes(q) ||
+          (a.excerpt || '').toLowerCase().includes(q) ||
+          (a.seriesName || '').toLowerCase().includes(q)
+        );
+
+        if (matches.length === 0) {
+          suggestionsList.innerHTML = `
+            <div class="p-3 text-center text-muted font-jetbrains" style="font-size: 12px; padding: 1.25rem;">
+              No publications matching "<strong>${escapeHtml(query)}</strong>"
+            </div>
+          `;
+          searchDropdown.style.display = 'flex';
+          selectedSuggestionIdx = -1;
+          return;
+        }
+
+        selectedSuggestionIdx = -1;
+        suggestionsList.innerHTML = matches.slice(0, 5).map((m, idx) => {
+          const meta = getSeriesMeta(m.series);
+          return `
+            <a href="article.html?slug=${encodeURIComponent(m.slug)}" class="suggestion-item" data-index="${idx}">
+              <div class="suggestion-header">
+                <span class="font-jetbrains" style="font-size: 10px; color: ${meta.accent}; text-transform: uppercase;">
+                  #${escapeHtml(m.seriesTag || m.seriesName || meta.name)}
+                </span>
+                <span class="font-jetbrains text-muted" style="font-size: 10px;">${m.readingTime || 5}m read</span>
+              </div>
+              <div class="suggestion-title">${highlightText(m.title, q)}</div>
+            </a>
+          `;
+        }).join('');
+
+        searchDropdown.style.display = 'flex';
+      }
+
+      function closeDropdown() {
+        if (searchDropdown) searchDropdown.style.display = 'none';
+        selectedSuggestionIdx = -1;
+      }
+
+      function openFilterPanel() {
+        if (filterPanel) {
+          filterPanel.style.display = 'block';
+          filterToggleBtn.setAttribute('aria-expanded', 'true');
+        }
+      }
+
+      function closeFilterPanel() {
+        if (filterPanel) {
+          filterPanel.style.display = 'none';
+          filterToggleBtn.setAttribute('aria-expanded', 'false');
+        }
+      }
+
+      // Debounce utility
+      let searchTimeout = null;
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          const val = e.target.value;
+          if (searchClearBtn) searchClearBtn.style.display = val ? 'flex' : 'none';
+
+          clearTimeout(searchTimeout);
+          searchTimeout = setTimeout(() => {
+            activeSearchQuery = val;
+            applyFiltersAndRender();
+            renderSuggestions(val);
+          }, 200);
+        });
+
+        // Keyboard navigation in search input
+        searchInput.addEventListener('keydown', (e) => {
+          const items = suggestionsList?.querySelectorAll('.suggestion-item') || [];
+
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (items.length > 0) {
+              selectedSuggestionIdx = (selectedSuggestionIdx + 1) % items.length;
+              items.forEach((it, idx) => it.classList.toggle('is-selected', idx === selectedSuggestionIdx));
+            }
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (items.length > 0) {
+              selectedSuggestionIdx = (selectedSuggestionIdx - 1 + items.length) % items.length;
+              items.forEach((it, idx) => it.classList.toggle('is-selected', idx === selectedSuggestionIdx));
+            }
+          } else if (e.key === 'Enter') {
+            if (selectedSuggestionIdx >= 0 && items[selectedSuggestionIdx]) {
+              e.preventDefault();
+              items[selectedSuggestionIdx].click();
+            } else {
+              closeDropdown();
+            }
+          } else if (e.key === 'Escape') {
+            closeDropdown();
+          }
+        });
+      }
+
+      searchClearBtn?.addEventListener('click', clearSearch);
+
+      // Keyboard Shortcut '/' to focus search
+      window.addEventListener('keydown', (e) => {
+        if (e.key === '/' && document.activeElement !== searchInput && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+          e.preventDefault();
+          searchInput?.focus();
+        }
+      });
+
+      // Filter Panel Toggle
+      filterToggleBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = filterPanel.style.display === 'block';
+        if (isOpen) closeFilterPanel();
+        else openFilterPanel();
+      });
+
+      filterCloseBtn?.addEventListener('click', closeFilterPanel);
+
+      // Close panels on click outside
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.blog-search-wrap')) {
+          closeDropdown();
+        }
+        if (!e.target.closest('.blog-filter-toggle-wrap')) {
+          closeFilterPanel();
+        }
+      });
+
+      // Series Chips in Filter Popover
+      panelSeriesChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+          panelSeriesChips.forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+          activeSeries = chip.getAttribute('data-series');
+        });
+      });
+
+      // Filter Panel Apply & Reset
+      applyFiltersBtn?.addEventListener('click', () => {
+        if (sortSelect) activeSort = sortSelect.value;
+        if (dateSelect) activeTimeframe = dateSelect.value;
+        closeFilterPanel();
+        applyFiltersAndRender();
+      });
+
+      resetFiltersBtn?.addEventListener('click', resetAllFilters);
+      emptyResetBtn?.addEventListener('click', resetAllFilters);
+      clearAllChipsBtn?.addEventListener('click', resetAllFilters);
+
+      // Attempt Supabase live fetch and merge seamlessly
+      (async () => {
+        try {
+          const cfg = window.__GCT_CONFIG__ || null;
+          if (cfg && cfg.supabaseUrl && cfg.anonKey) {
+            const artRes = await fetch(`${cfg.supabaseUrl}/rest/v1/articles?status=eq.published&order=published_at.desc`, {
+              headers: { apikey: cfg.anonKey }
+            });
+            if (artRes.ok) {
+              const remote = await artRes.json();
+              if (remote && Array.isArray(remote) && remote.length > 0) {
+                // Map remote articles
+                const mappedRemote = remote.map(r => {
+                  const sMeta = getSeriesMeta(r.category_id);
+                  return {
+                    id: r.id,
+                    slug: r.slug,
+                    title: r.title,
+                    series: r.category_id || 'gct-threatscape',
+                    seriesName: sMeta.name,
+                    seriesAccent: sMeta.accent,
+                    seriesTag: sMeta.name.split(' ')[0],
+                    excerpt: r.excerpt,
+                    author: 'Ajoy A G',
+                    readingTime: r.reading_time_minutes || 5,
+                    publishedAt: r.published_at || r.created_at
+                  };
+                });
+
+                // Merge without duplicate slugs
+                const localSlugs = new Set(BASELINE_ARTICLES.map(b => b.slug));
+                const uniqueRemote = mappedRemote.filter(r => !localSlugs.has(r.slug));
+                allArticles = [...mappedRemote, ...BASELINE_ARTICLES.filter(b => !mappedRemote.some(r => r.slug === b.slug))];
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('[GCT Blog] Running in self-contained resilient fallback mode:', err.message);
+        } finally {
+          applyFiltersAndRender();
+        }
+      })();
+
+      // Initial Render
+      applyFiltersAndRender();
+    })();
+  </script>
+</body>
+
+</html>
