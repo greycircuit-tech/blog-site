@@ -455,98 +455,26 @@
   <script src="script.js" defer></script>
   <script>
     (() => {
-      // Baseline Comprehensive Publications Dataset covering all 6 configured series
-      const BASELINE_ARTICLES = [
-        {
-          id: 'art-001',
-          slug: 'architecting-resilient-zero-trust-perimeters',
-          title: 'Architecting Resilient Zero-Trust Perimeters for Mission-Critical Infrastructure',
-          series: 'gct-threatscape',
-          seriesName: 'GCT THREATSCAPE',
-          seriesAccent: '#f43f5e',
-          seriesTag: 'THREAT-INTEL',
-          excerpt: 'An architectural breakdown of perimeter defenses, continuous cryptographic verification, and operational resilience under persistent state-sponsored adversaries.',
-          author: 'Ajoy A G',
-          readingTime: 6,
-          publishedAt: '2026-11-15T09:00:00Z'
-        },
-        {
-          id: 'art-002',
-          slug: 'autonomous-workflow-orchestration-high-throughput',
-          title: 'Autonomous Workflow Orchestration in High-Throughput Environments',
-          series: 'automation-engineering',
-          seriesName: 'Automation & Engineering',
-          seriesAccent: '#10b981',
-          seriesTag: 'AUTOMATION',
-          excerpt: 'How autonomous deterministic pipelines reduce operational toil by 78% while guaranteeing strict auditability, immutable trace logging, and idempotent state transitions.',
-          author: 'Ajoy A G',
-          readingTime: 4,
-          publishedAt: '2026-11-10T14:30:00Z'
-        },
-        {
-          id: 'art-003',
-          slug: 'dpdp-act-2023-enterprise-compliance-blueprint',
-          title: 'India DPDP Act 2023: Technical Architecture & Compliance Blueprint for Financial Systems',
-          series: 'regulatory-compliance',
-          seriesName: 'Compliance & Regulatory',
-          seriesAccent: '#f59e0b',
-          seriesTag: 'REGULATORY',
-          excerpt: 'Translating statutory data protection mandates into concrete technical controls, data fiduciary boundaries, purpose limitation primitives, and verifiable consent architectures.',
-          author: 'Ajoy A G',
-          readingTime: 8,
-          publishedAt: '2026-11-05T11:00:00Z'
-        },
-        {
-          id: 'art-004',
-          slug: 'sovereign-cloud-infrastructure-resilience-patterns',
-          title: 'Sovereign Multi-Region Infrastructure: Resilience Patterns for High-Availability Workloads',
-          series: 'gct-field-notes',
-          seriesName: 'GCT Field Notes',
-          seriesAccent: '#38bdf8',
-          seriesTag: 'FIELD-OPS',
-          excerpt: 'Production lessons and architectural patterns from multi-region distributed deployments designed to sustain systemic cloud failures without data divergence.',
-          author: 'Ajoy A G',
-          readingTime: 7,
-          publishedAt: '2026-10-28T08:15:00Z'
-        },
-        {
-          id: 'art-005',
-          slug: 'adversary-emulation-frameworks-state-sponsored-threats',
-          title: 'Adversary Emulation & Defensive Validation Against Advanced Persistent Threats',
-          series: 'cybersecurity-intelligence',
-          seriesName: 'Cybersecurity Intelligence',
-          seriesAccent: '#7c3aed',
-          seriesTag: 'STRATEGIC-INTEL',
-          excerpt: 'Systematic methodologies for emulating adversary TTPs, measuring defensive detection surface coverage, and validating telemetry pipeline fidelity.',
-          author: 'Ajoy A G',
-          readingTime: 9,
-          publishedAt: '2026-10-20T16:45:00Z'
-        },
-        {
-          id: 'art-006',
-          slug: 'formal-verification-distributed-cryptographic-protocols',
-          title: 'Formal Verification of Distributed Cryptographic Protocols in High-Assurance Networks',
-          series: 'research-whitepapers',
-          seriesName: 'Research & Whitepapers',
-          seriesAccent: '#c4b5fd',
-          seriesTag: 'RESEARCH',
-          excerpt: 'Applying automated mathematical theorem proving to verify safety, liveness, and fault-tolerance invariants in distributed consensus algorithms.',
-          author: 'Ajoy A G',
-          readingTime: 11,
-          publishedAt: '2026-10-12T13:00:00Z'
-        }
-      ];
+      // No hardcoded sample or placeholder publications
+      const BASELINE_ARTICLES = [];
 
-      // Series metadata registry
+      // Series metadata registry (supporting both slug and UUID lookups)
       const SERIES_MAP = {
-        'gct-threatscape': { name: 'GCT THREATSCAPE', accent: '#f43f5e', class: 'series-threatscape' },
-        'gct-field-notes': { name: 'GCT Field Notes', accent: '#38bdf8', class: 'series-field-notes' },
-        'cybersecurity-intelligence': { name: 'Cybersecurity Intelligence', accent: '#7c3aed', class: 'series-cybersecurity-intelligence' },
-        'regulatory-compliance': { name: 'Compliance & Regulatory', accent: '#f59e0b', class: 'series-regulatory-compliance' },
-        'automation-engineering': { name: 'Automation & Engineering', accent: '#10b981', class: 'series-automation-engineering' },
-        'research-whitepapers': { name: 'Research & Whitepapers', accent: '#c4b5fd', class: 'series-research-whitepapers' },
-        'threatscape': { name: 'GCT THREATSCAPE', accent: '#f43f5e', class: 'series-threatscape' },
-        'field-notes': { name: 'GCT Field Notes', accent: '#38bdf8', class: 'series-field-notes' }
+        'gct-threatscape': { name: 'GCT THREATSCAPE', accent: '#f43f5e', class: 'series-threatscape', slug: 'gct-threatscape' },
+        'gct-field-notes': { name: 'GCT Cybersecurity Field Notes', accent: '#38bdf8', class: 'series-field-notes', slug: 'gct-field-notes' },
+        'cybersecurity-intelligence': { name: 'Cybersecurity Intelligence Series', accent: '#7c3aed', class: 'series-cybersecurity-intelligence', slug: 'cybersecurity-intelligence' },
+        'regulatory-compliance': { name: 'Cybersecurity Regulatory & Compliance Series', accent: '#f59e0b', class: 'series-regulatory-compliance', slug: 'regulatory-compliance' },
+        'automation-engineering': { name: 'Automation & Engineering', accent: '#10b981', class: 'series-automation-engineering', slug: 'automation-engineering' },
+        'research-whitepapers': { name: 'Research & Whitepapers', accent: '#c4b5fd', class: 'series-research-whitepapers', slug: 'research-whitepapers' },
+        // Category UUIDs from database
+        '60abe20f-db1e-4e1c-87b0-2a163df609e4': { name: 'GCT THREATSCAPE', accent: '#f43f5e', class: 'series-threatscape', slug: 'gct-threatscape' },
+        'dac2f9ab-0df2-41e9-9dfc-0e6a79549a4c': { name: 'GCT Cybersecurity Field Notes', accent: '#38bdf8', class: 'series-field-notes', slug: 'gct-field-notes' },
+        '40580317-0092-470e-bc55-a16fc4fe23e5': { name: 'Cybersecurity Intelligence Series', accent: '#7c3aed', class: 'series-cybersecurity-intelligence', slug: 'cybersecurity-intelligence' },
+        '3c080890-182f-4d70-9295-7f3da2babdd7': { name: 'Cybersecurity Regulatory & Compliance Series', accent: '#f59e0b', class: 'series-regulatory-compliance', slug: 'regulatory-compliance' },
+        '9d20122e-02dd-47c5-b67a-bf3f97930d4d': { name: 'Automation & Engineering', accent: '#10b981', class: 'series-automation-engineering', slug: 'automation-engineering' },
+        '5bde1b8d-0d1b-449a-aaa9-b7c52ac3b517': { name: 'Research & Whitepapers', accent: '#c4b5fd', class: 'series-research-whitepapers', slug: 'research-whitepapers' },
+        'threatscape': { name: 'GCT THREATSCAPE', accent: '#f43f5e', class: 'series-threatscape', slug: 'gct-threatscape' },
+        'field-notes': { name: 'GCT Cybersecurity Field Notes', accent: '#38bdf8', class: 'series-field-notes', slug: 'gct-field-notes' }
       };
 
       let allArticles = [...BASELINE_ARTICLES];
@@ -652,7 +580,9 @@
 
         // Update Results Count Text
         if (resultsCountText) {
-          if (query) {
+          if (allArticles.length === 0) {
+            resultsCountText.textContent = '0 publications published';
+          } else if (query) {
             resultsCountText.textContent = `Found ${list.length} ${list.length === 1 ? 'publication' : 'publications'} matching "${activeSearchQuery}"`;
           } else if (activeSeries !== 'all') {
             const sMeta = getSeriesMeta(activeSeries);
@@ -669,6 +599,35 @@
         if (list.length === 0) {
           articlesContainer.style.display = 'none';
           emptyStateContainer.style.display = 'block';
+          if (allArticles.length === 0) {
+            emptyStateContainer.innerHTML = `
+              <div class="empty-icon-wrap">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.5">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+              </div>
+              <h3 class="font-space text-white">No publications published yet</h3>
+              <p class="font-inter text-muted">New technical research and engineering whitepapers are currently in editorial review.</p>
+            `;
+          } else {
+            emptyStateContainer.innerHTML = `
+              <div class="empty-icon-wrap">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#c4b5fd" stroke-width="1.5">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  <line x1="11" y1="8" x2="11" y2="12"></line>
+                  <line x1="11" y1="14" x2="11.01" y2="14"></line>
+                </svg>
+              </div>
+              <h3 class="font-space text-white">No publications match your criteria</h3>
+              <p class="font-inter text-muted">We couldn't find any articles matching your search query or filter combination.</p>
+              <button type="button" id="btn-empty-reset" class="btn-empty-reset font-jetbrains">Reset All Filters</button>
+            `;
+            document.getElementById('btn-empty-reset')?.addEventListener('click', resetAllFilters);
+          }
         } else {
           emptyStateContainer.style.display = 'none';
           articlesContainer.style.display = 'grid';
@@ -973,7 +932,7 @@
       emptyResetBtn?.addEventListener('click', resetAllFilters);
       clearAllChipsBtn?.addEventListener('click', resetAllFilters);
 
-      // Attempt Supabase live fetch and merge seamlessly
+      // Attempt Supabase live fetch of published articles
       (async () => {
         try {
           const cfg = window.__GCT_CONFIG__ || null;
@@ -983,15 +942,14 @@
             });
             if (artRes.ok) {
               const remote = await artRes.json();
-              if (remote && Array.isArray(remote) && remote.length > 0) {
-                // Map remote articles
-                const mappedRemote = remote.map(r => {
+              if (remote && Array.isArray(remote)) {
+                allArticles = remote.map(r => {
                   const sMeta = getSeriesMeta(r.category_id);
                   return {
                     id: r.id,
                     slug: r.slug,
                     title: r.title,
-                    series: r.category_id || 'gct-threatscape',
+                    series: sMeta.slug || r.category_id || 'gct-threatscape',
                     seriesName: sMeta.name,
                     seriesAccent: sMeta.accent,
                     seriesTag: sMeta.name.split(' ')[0],
@@ -1001,16 +959,11 @@
                     publishedAt: r.published_at || r.created_at
                   };
                 });
-
-                // Merge without duplicate slugs
-                const localSlugs = new Set(BASELINE_ARTICLES.map(b => b.slug));
-                const uniqueRemote = mappedRemote.filter(r => !localSlugs.has(r.slug));
-                allArticles = [...mappedRemote, ...BASELINE_ARTICLES.filter(b => !mappedRemote.some(r => r.slug === b.slug))];
               }
             }
           }
         } catch (err) {
-          console.warn('[GCT Blog] Running in self-contained resilient fallback mode:', err.message);
+          console.warn('[GCT Blog] Supabase fetch warning:', err.message);
         } finally {
           applyFiltersAndRender();
         }

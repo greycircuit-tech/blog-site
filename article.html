@@ -757,11 +757,11 @@
 
         <div id="article-badge" class="status-pill font-mono text-2xs uppercase tracking-widest"
           style="width: fit-content; color: var(--accent-violet); border-color: rgba(196, 181, 253, 0.3);">
-          GCT THREATSCAPE
+          TECHNICAL BRIEFING
         </div>
 
         <h1 class="article-title font-display" id="article-heading">
-          Architecting Resilient Zero-Trust Perimeters for Mission-Critical Infrastructure
+          Loading Publication...
         </h1>
 
         <div class="article-byline font-mono">
@@ -770,9 +770,9 @@
             <span>Ajoy A G</span>
           </div>
           <span style="opacity: 0.3;">•</span>
-          <span id="article-reading-time">6 min read</span>
+          <span id="article-reading-time">—</span>
           <span style="opacity: 0.3;">•</span>
-          <span id="article-date">November 15, 2026</span>
+          <span id="article-date">—</span>
         </div>
       </div>
     </section>
@@ -804,21 +804,9 @@
           <!-- Main Editorial Column -->
           <div class="article-main-column">
             <article class="article-body" id="article-body">
-              <h2>1. The Demise of the Perimeter Myth</h2>
-              <p>
-                Traditional enterprise network models relied on the perimeter boundary: once inside the firewall or VPN, a client was implicitly trusted. In modern distributed cloud infrastructures, every workload, interface, and service mesh connection must assume active compromise.
-              </p>
-              <h2>2. Continuous Cryptographic Verification</h2>
-              <p>
-                Implementing mutual TLS (mTLS) with short-lived ephemeral certificates eliminates static credential exposure and prevents lateral traversal. Identity verification must be evaluated continuously rather than once at session initiation.
-              </p>
-              <blockquote>
-                "Security is not an overlay; it is the fundamental constraint under which resilient systems are engineered."
-              </blockquote>
-              <h3>3. Operational Takeaways</h3>
-              <p>
-                Ensure identity verification occurs at Layer 7 before packet forwarding, enforce automated policy attestation, and continuously audit session nonces across your cluster ingress controllers.
-              </p>
+              <div style="padding: 2.5rem 1rem; text-align: center; color: var(--text-secondary);" class="font-jetbrains">
+                Loading publication from secure repository...
+              </div>
             </article>
 
             <!-- Social Share & Engagement Bar -->
@@ -1047,8 +1035,23 @@
         return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
       }
 
+      const SERIES_MAP = {
+        'gct-threatscape': { name: 'GCT THREATSCAPE', accent: '#f43f5e', class: 'series-threatscape', slug: 'gct-threatscape' },
+        'gct-field-notes': { name: 'GCT Cybersecurity Field Notes', accent: '#38bdf8', class: 'series-field-notes', slug: 'gct-field-notes' },
+        'cybersecurity-intelligence': { name: 'Cybersecurity Intelligence Series', accent: '#7c3aed', class: 'series-cybersecurity-intelligence', slug: 'cybersecurity-intelligence' },
+        'regulatory-compliance': { name: 'Cybersecurity Regulatory & Compliance Series', accent: '#f59e0b', class: 'series-regulatory-compliance', slug: 'regulatory-compliance' },
+        'automation-engineering': { name: 'Automation & Engineering', accent: '#10b981', class: 'series-automation-engineering', slug: 'automation-engineering' },
+        'research-whitepapers': { name: 'Research & Whitepapers', accent: '#c4b5fd', class: 'series-research-whitepapers', slug: 'research-whitepapers' },
+        '60abe20f-db1e-4e1c-87b0-2a163df609e4': { name: 'GCT THREATSCAPE', accent: '#f43f5e', class: 'series-threatscape', slug: 'gct-threatscape' },
+        'dac2f9ab-0df2-41e9-9dfc-0e6a79549a4c': { name: 'GCT Cybersecurity Field Notes', accent: '#38bdf8', class: 'series-field-notes', slug: 'gct-field-notes' },
+        '40580317-0092-470e-bc55-a16fc4fe23e5': { name: 'Cybersecurity Intelligence Series', accent: '#7c3aed', class: 'series-cybersecurity-intelligence', slug: 'cybersecurity-intelligence' },
+        '3c080890-182f-4d70-9295-7f3da2babdd7': { name: 'Cybersecurity Regulatory & Compliance Series', accent: '#f59e0b', class: 'series-regulatory-compliance', slug: 'regulatory-compliance' },
+        '9d20122e-02dd-47c5-b67a-bf3f97930d4d': { name: 'Automation & Engineering', accent: '#10b981', class: 'series-automation-engineering', slug: 'automation-engineering' },
+        '5bde1b8d-0d1b-449a-aaa9-b7c52ac3b517': { name: 'Research & Whitepapers', accent: '#c4b5fd', class: 'series-research-whitepapers', slug: 'research-whitepapers' }
+      };
+
       const urlParams = new URLSearchParams(window.location.search);
-      const slug = urlParams.get('slug') || 'architecting-zero-trust-perimeters';
+      const slug = urlParams.get('slug');
 
       // 1. Table of Contents Generator
       function buildTableOfContents() {
@@ -1292,57 +1295,39 @@
       // 4. Related Publications
       async function loadRelatedPublications(currentSlug) {
         const container = document.getElementById('related-grid');
+        const section = document.getElementById('related-publications-section');
         if (!container) return;
-
-        const fallbackRelated = [
-          {
-            title: "Decoupling Control and Data Planes in High-Scale Edge Meshes",
-            slug: "decoupling-control-and-data-planes",
-            series: "GCT Field Notes",
-            accent: "#38bdf8",
-            time: "8 min read"
-          },
-          {
-            title: "Cryptographic Attestation & Continuous DPDP Act 2023 Compliance",
-            slug: "cryptographic-attestation-compliance",
-            series: "Compliance & Regulatory",
-            accent: "#4ade80",
-            time: "10 min read"
-          },
-          {
-            title: "High-Throughput Threat Modeling for Distributed Event Streams",
-            slug: "threat-modeling-distributed-streams",
-            series: "Cybersecurity Intelligence",
-            accent: "#c4b5fd",
-            time: "7 min read"
-          }
-        ];
 
         let articles = [];
         try {
           const cfg = window.__GCT_CONFIG__ || null;
           if (cfg && cfg.supabaseUrl && cfg.anonKey) {
-            const query = `${cfg.supabaseUrl}/rest/v1/articles?status=eq.published&slug=neq.${encodeURIComponent(currentSlug)}&select=title,slug,reading_time_minutes,series&limit=3`;
+            const query = `${cfg.supabaseUrl}/rest/v1/articles?status=eq.published&slug=neq.${encodeURIComponent(currentSlug)}&select=title,slug,reading_time_minutes,category_id&limit=3`;
             const res = await fetch(query, { headers: { apikey: cfg.anonKey } });
             if (res.ok) {
               const data = await res.json();
               if (data && data.length > 0) {
-                articles = data.map(d => ({
-                  title: d.title,
-                  slug: d.slug,
-                  series: d.series || 'Engineering Intelligence',
-                  accent: '#c4b5fd',
-                  time: `${d.reading_time_minutes || 6} min read`
-                }));
+                articles = data.map(d => {
+                  const sMeta = SERIES_MAP[d.category_id] || { name: 'Technical Paper', accent: '#c4b5fd' };
+                  return {
+                    title: d.title,
+                    slug: d.slug,
+                    series: sMeta.name,
+                    accent: sMeta.accent,
+                    time: `${d.reading_time_minutes || 5} min read`
+                  };
+                });
               }
             }
           }
         } catch (e) {}
 
         if (articles.length === 0) {
-          articles = fallbackRelated;
+          if (section) section.style.display = 'none';
+          return;
         }
 
+        if (section) section.style.display = 'block';
         container.innerHTML = articles.map(art => `
           <a href="article.html?slug=${encodeURIComponent(art.slug)}" class="related-card font-jetbrains">
             <div>
@@ -1497,6 +1482,14 @@
         document.getElementById('article-reading-time').textContent = `${art.reading_time_minutes || 5} min read`;
         document.getElementById('article-date').textContent = new Date(art.published_at || art.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
+        const meta = SERIES_MAP[art.category_id] || SERIES_MAP[art.series] || { name: 'Technical Paper', accent: '#c4b5fd' };
+        const badgeEl = document.getElementById('article-badge');
+        if (badgeEl) {
+          badgeEl.textContent = meta.name;
+          badgeEl.style.color = meta.accent;
+          badgeEl.style.borderColor = `${meta.accent}55`;
+        }
+
         if (art.content_html) {
           const bodyEl = document.getElementById('article-body');
           if (bodyEl) {
@@ -1545,8 +1538,10 @@
       }
 
       // Initialize all dynamic subsystems
-      let activeArticleId = 'd0000000-0000-4000-8000-000000000001';
-      if (urlParams.has('slug')) {
+      let articleFound = false;
+      let activeArticleId = null;
+
+      if (slug) {
         try {
           const cfg = window.__GCT_CONFIG__ || null;
           if (cfg && cfg.supabaseUrl && cfg.anonKey) {
@@ -1556,21 +1551,64 @@
             if (artRes.ok) {
               const data = await artRes.json();
               if (data && data.length > 0) {
+                articleFound = true;
                 activeArticleId = data[0].id;
                 hydrateArticle(data[0]);
+                buildTableOfContents();
+                initLikes(activeArticleId, slug);
+                initSharing(data[0].title, window.location.href);
+                loadRelatedPublications(slug);
+                initComments(activeArticleId, slug);
               }
             }
           }
         } catch (err) {
-          console.warn('[GCT Blog Article] Using baseline article content:', err);
+          console.warn('[GCT Blog Article] Failed to fetch article:', err);
         }
       }
 
-      buildTableOfContents();
-      initLikes(activeArticleId, slug);
-      initSharing(document.title, window.location.href);
-      loadRelatedPublications(slug);
-      initComments(activeArticleId, slug);
+      if (!articleFound) {
+        // Professional Intentional Not Found State - No Fabricated Dates or Hardcoded Sample Articles
+        document.title = 'Publication Not Available | Grey Circuit Technologies';
+        const pageTitleEl = document.getElementById('page-title');
+        if (pageTitleEl) pageTitleEl.textContent = 'Publication Not Available | Grey Circuit Technologies';
+        const breadcrumbTitle = document.getElementById('breadcrumb-title');
+        if (breadcrumbTitle) breadcrumbTitle.textContent = 'Not Available';
+        const badgeEl = document.getElementById('article-badge');
+        if (badgeEl) {
+          badgeEl.textContent = 'EDITORIAL ARCHIVE';
+          badgeEl.style.color = '#c4b5fd';
+          badgeEl.style.borderColor = 'rgba(196, 181, 253, 0.3)';
+        }
+        const headingEl = document.getElementById('article-heading');
+        if (headingEl) headingEl.textContent = 'Publication Not Available';
+        const bylineEl = document.querySelector('.article-byline');
+        if (bylineEl) bylineEl.style.display = 'none';
+
+        const bodyEl = document.getElementById('article-body');
+        if (bodyEl) {
+          bodyEl.innerHTML = `
+            <div style="padding: 3rem 1.5rem; text-align: center; border: 1px dashed rgba(255,255,255,0.12); border-radius: 12px; background: rgba(255,255,255,0.02); margin: 2rem 0;">
+              <h3 style="color: #ffffff; font-family: 'Space Grotesk', sans-serif; font-size: 1.35rem; margin-bottom: 0.75rem;">This publication is not currently published</h3>
+              <p style="color: var(--text-secondary); font-family: 'Inter', sans-serif; font-size: 0.95rem; line-height: 1.6; max-width: 520px; margin: 0 auto 1.5rem;">
+                The requested technical publication is unpublished, has been moved, or is currently under editorial review.
+              </p>
+              <a href="index.html" class="btn btn-secondary font-jetbrains" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #fff; text-decoration: none; font-size: 13px;">
+                &larr; Return to Publications Directory
+              </a>
+            </div>
+          `;
+        }
+
+        const tocSidebar = document.getElementById('article-toc-sidebar');
+        if (tocSidebar) tocSidebar.style.display = 'none';
+        const engagementBar = document.getElementById('engagement-bar');
+        if (engagementBar) engagementBar.style.display = 'none';
+        const commentsSection = document.getElementById('comments-section');
+        if (commentsSection) commentsSection.style.display = 'none';
+        const relatedSection = document.getElementById('related-publications-section');
+        if (relatedSection) relatedSection.style.display = 'none';
+      }
     })();
   </script>
 </body>
