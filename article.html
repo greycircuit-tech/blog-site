@@ -1546,7 +1546,10 @@
           const cfg = window.__GCT_CONFIG__ || null;
           if (cfg && cfg.supabaseUrl && cfg.anonKey) {
             const artRes = await fetch(`${cfg.supabaseUrl}/rest/v1/articles?slug=eq.${encodeURIComponent(slug)}&status=eq.published&select=*`, {
-              headers: { apikey: cfg.anonKey }
+              headers: {
+                apikey: cfg.anonKey,
+                Authorization: `Bearer ${cfg.anonKey}`
+              }
             });
             if (artRes.ok) {
               const data = await artRes.json();
