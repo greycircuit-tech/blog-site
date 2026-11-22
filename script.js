@@ -10,59 +10,22 @@
   const isFinePointer = window.matchMedia('(pointer: fine)').matches;
 
   /* ------------------------------------------------------------------------
-     1. CUSTOM CONTRAST CURSOR & MAGNETIC MICRO-INTERACTIONS
+     1. MAGNETIC MICRO-INTERACTIONS (NATIVE BROWSER CURSOR RESTORED)
      ------------------------------------------------------------------------ */
-  function initCursorAndMagnetic() {
-    const dot = document.getElementById('cursor-dot');
-    const ring = document.getElementById('cursor-ring');
-    if (!dot || !ring || !isFinePointer) return;
+  function initMagneticInteractions() {
+    if (prefersReducedMotion) return;
 
-    let mouseX = window.innerWidth / 2;
-    let mouseY = window.innerHeight / 2;
-    let ringX = mouseX;
-    let ringY = mouseY;
-
-    window.addEventListener('mousemove', (e) => {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
-      dot.style.transform = `translate3d(${mouseX}px, ${mouseY}px, 0) translate(-50%, -50%)`;
-      document.documentElement.style.setProperty('--mx', `${mouseX}px`);
-      document.documentElement.style.setProperty('--my', `${mouseY}px`);
-    }, { passive: true });
-
-    const renderLoop = () => {
-      ringX += (mouseX - ringX) * 0.18;
-      ringY += (mouseY - ringY) * 0.18;
-      ring.style.transform = `translate3d(${ringX}px, ${ringY}px, 0) translate(-50%, -50%)`;
-      requestAnimationFrame(renderLoop);
-    };
-    requestAnimationFrame(renderLoop);
-
-    const interactiveSelectors = 'a, button, input, textarea, select, .insight-card, .article-card, .series-pill';
-    document.addEventListener('mouseover', (e) => {
-      if (e.target.closest(interactiveSelectors)) {
-        document.body.classList.add('hovering');
-      }
-    });
-    document.addEventListener('mouseout', (e) => {
-      if (e.target.closest(interactiveSelectors)) {
-        document.body.classList.remove('hovering');
-      }
-    });
-
-    if (!prefersReducedMotion) {
-      document.querySelectorAll('[data-magnetic]').forEach((el) => {
-        el.addEventListener('mousemove', (e) => {
-          const rect = el.getBoundingClientRect();
-          const dx = (e.clientX - (rect.left + rect.width / 2)) * 0.22;
-          const dy = (e.clientY - (rect.top + rect.height / 2)) * 0.22;
-          el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
-        });
-        el.addEventListener('mouseleave', () => {
-          el.style.transform = '';
-        });
+    document.querySelectorAll('[data-magnetic]').forEach((el) => {
+      el.addEventListener('mousemove', (e) => {
+        const rect = el.getBoundingClientRect();
+        const dx = (e.clientX - (rect.left + rect.width / 2)) * 0.22;
+        const dy = (e.clientY - (rect.top + rect.height / 2)) * 0.22;
+        el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
       });
-    }
+      el.addEventListener('mouseleave', () => {
+        el.style.transform = '';
+      });
+    });
   }
 
   /* ------------------------------------------------------------------------
@@ -102,13 +65,18 @@
     let lastScrollY = window.scrollY;
     window.addEventListener('scroll', () => {
       const currentY = window.scrollY;
-      nav.classList.toggle('is-scrolled', currentY > 40);
+      const isScrolled = currentY > 40;
+      nav.classList.toggle('is-scrolled', isScrolled);
+      const widget = document.getElementById('reader-profile-widget');
+      if (widget) widget.classList.toggle('is-scrolled', isScrolled);
 
       if (currentY > 280 && currentY - lastScrollY > 14) {
         nav.classList.add('is-hidden');
+        if (widget) widget.classList.add('is-hidden');
         closeAllDropdowns();
       } else if (lastScrollY - currentY > 10 || currentY < 120) {
         nav.classList.remove('is-hidden');
+        if (widget) widget.classList.remove('is-hidden');
       }
       lastScrollY = currentY;
     }, { passive: true });
@@ -139,11 +107,11 @@
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-      initCursorAndMagnetic();
+      initMagneticInteractions();
       initNavigation();
     });
   } else {
-    initCursorAndMagnetic();
+    initMagneticInteractions();
     initNavigation();
   }
 })();

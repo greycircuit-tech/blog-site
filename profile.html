@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-black text-white antialiased">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reader Profile &amp; Control Plane | Grey Circuit Technologies</title>
+  <meta name="description"
+    content="Manage your reader identity, publication discussion history, and data privacy governance at Grey Circuit Technologies.">
+  <link rel="canonical" href="https://blog.greycircuit.tech/profile.html">
+
+  <!-- OpenGraph -->
+  <meta property="og:title" content="Reader Profile &amp; Control Plane | Grey Circuit Technologies">
+  <meta property="og:description"
+    content="Manage your reader identity, publication discussion history, and data privacy governance at Grey Circuit Technologies.">
+  <meta property="og:url" content="https://blog.greycircuit.tech/profile.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Grey Circuit Technologies">
+  <meta property="og:image" content="https://greycircuit.tech/assets/logo_transparent.png">
+
+  <!-- Fonts: Inter, Space Grotesk, JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <!-- Core GreyCircuit Design System Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="selection-invert">
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <!-- Primary Navigation (Dynamic Island + Mobile Slide-Out Drawer) -->
+  <header>
+    <nav class="dynamic-island" id="site-nav" aria-label="Primary navigation">
+      <div class="island-shell">
+        <a href="https://greycircuit.tech" class="island-brand" aria-label="Grey Circuit Technologies home">
+          <img src="assets/logo_transparent.png" alt="" width="20" height="23" decoding="async">
+          <span>GREY CIRCUIT</span>
+        </a>
+        <div class="island-divider" aria-hidden="true"></div>
+
+        <div class="island-links-desktop">
+          <a href="https://greycircuit.tech#about" class="island-link magnetic" data-magnetic>About</a>
+
+          <div class="nav-dropdown">
+            <button type="button" class="island-link nav-dropdown-trigger magnetic" data-magnetic
+              aria-expanded="false" aria-haspopup="true">
+              Services <span class="nav-chevron" aria-hidden="true">+</span>
+            </button>
+            <div class="nav-dropdown-menu" role="menu">
+              <a href="https://greycircuit.tech/services/cybersecurity-service/cybersecurity.html"
+                role="menuitem">Cybersecurity</a>
+              <a href="https://greycircuit.tech/services/automation-service/automation.html" role="menuitem">Automation</a>
+              <a href="https://greycircuit.tech/services/swe-service/software-engineering.html" role="menuitem">Software
+                Engineering</a>
+              <a href="https://greycircuit.tech/services/" role="menuitem">All Capabilities →</a>
+            </div>
+          </div>
+
+          <a href="https://greycircuit.tech/projects/project.html" class="island-link magnetic" data-magnetic>Projects</a>
+          <a href="index.html" class="island-link magnetic is-active-section" data-magnetic>Blog</a>
+        </div>
+
+        <a href="index.html" class="island-contact magnetic" data-magnetic style="font-size: 11px;">← Back to Blog</a>
+
+        <button type="button" class="mobile-drawer-toggle" id="mobile-drawer-toggle" aria-expanded="false"
+          aria-controls="mobile-drawer" aria-label="Open navigation menu">
+          <span class="hamburger-bar"></span>
+          <span class="hamburger-bar"></span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Reader Profile Stationary Avatar & Right-Expanding Greeting Capsule -->
+    <div class="reader-profile-widget" id="reader-profile-widget" aria-label="Reader Profile & Settings">
+      <button type="button" class="profile-capsule-btn" id="btn-reader-profile" aria-expanded="false" aria-haspopup="dialog" title="Reader Profile & Preferences">
+        <div class="profile-avatar-wrap" id="profile-avatar-wrap">
+          <svg class="profile-avatar-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </div>
+        <div class="profile-greeting-shelf" id="profile-greeting-shelf" aria-hidden="true">
+          <span class="greeting-prefix font-mono text-2xs" id="greeting-prefix">Hi,</span>
+          <span class="greeting-name font-jetbrains" id="greeting-name">Reader</span>
+        </div>
+      </button>
+    </div>
+
+    <!-- Accessible Mobile Slide-Out Drawer -->
+    <div class="mobile-drawer-backdrop" id="mobile-drawer-backdrop" hidden></div>
+    <aside class="mobile-drawer" id="mobile-drawer" aria-label="Mobile Navigation Drawer" aria-hidden="true">
+      <div class="mobile-drawer-header">
+        <span class="font-mono text-xs tracking-widest uppercase text-grey-400">NAVIGATION // GCT</span>
+        <button type="button" class="mobile-drawer-close" id="mobile-drawer-close"
+          aria-label="Close navigation menu">&times;</button>
+      </div>
+      <nav class="mobile-drawer-nav">
+        <a href="https://greycircuit.tech#about" class="mobile-drawer-link">01 / About Grey Circuit</a>
+        <a href="https://greycircuit.tech#services" class="mobile-drawer-link">02 / Core Capabilities</a>
+        <a href="https://greycircuit.tech/projects/project.html" class="mobile-drawer-link">03 / Selected Projects</a>
+        <a href="index.html" class="mobile-drawer-link">04 / Blog Publications</a>
+        <a href="profile.html" class="mobile-drawer-link active">05 / Reader Profile</a>
+        <a href="https://greycircuit.tech#contact" class="mobile-drawer-cta">Start a Conversation →</a>
+      </nav>
+    </aside>
+  </header>
+
+  <main id="main-content" class="profile-page-shell">
+    <div class="ambient-glow hero-glow" aria-hidden="true" style="top: 0; left: 50%; transform: translateX(-50%); opacity: 0.4;"></div>
+
+    <!-- Page Header -->
+    <section class="profile-page-header">
+      <div class="profile-header-main">
+        <div class="profile-kicker font-mono text-2xs text-muted">
+          <span class="badge bg-secondary font-jetbrains" style="font-size: 10px; background: rgba(124,58,237,0.15) !important; color: #c4b5fd; border: 1px solid rgba(196,181,253,0.3);">READER // CONTROL PLANE</span>
+          <span class="text-muted">v2026.1</span>
+        </div>
+        <h1 class="profile-page-title">Reader Identity &amp; Privacy Controls</h1>
+        <p class="profile-page-desc">
+          Manage your verified identity, technical publication discussions, and data governance preferences under Grey Circuit Technologies fail-closed privacy architecture.
+        </p>
+      </div>
+      <div>
+        <a href="index.html" class="profile-back-link">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Back to Blog
+        </a>
+      </div>
+    </section>
+
+    <!-- Authenticated View (Rendered when reader has genuine Supabase session) -->
+    <div id="profile-authenticated-view" style="display: none;">
+      <!-- Profile Overview Hero Card -->
+      <div class="profile-overview-card">
+        <div class="profile-overview-identity">
+          <div class="profile-avatar-large" id="profile-avatar-large">
+            <!-- Populated via JS -->
+            <span id="profile-avatar-initials">G</span>
+          </div>
+          <div class="profile-overview-details">
+            <h2 class="profile-overview-name" id="overview-display-name">
+              <span>Authenticated Reader</span>
+              <span class="badge bg-success font-jetbrains" id="overview-status-badge" style="font-size: 11px; padding: 4px 8px;">
+                ● Google Verified
+              </span>
+            </h2>
+            <div class="profile-overview-meta">
+              <span class="profile-overview-email" id="overview-email">reader@example.com</span>
+              <span class="badge bg-secondary font-jetbrains" style="font-size: 10px; background: rgba(255,255,255,0.06) !important; color: #a1a1aa;">Confidential ID</span>
+            </div>
+          </div>
+        </div>
+        <div class="profile-overview-actions">
+          <a href="#section-general" class="btn btn-secondary btn-sm font-jetbrains" id="overview-btn-edit">Edit Profile</a>
+          <button type="button" class="btn btn-secondary btn-sm font-jetbrains" id="overview-btn-signout" style="color: #fca5a5; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08);">
+            Sign Out
+          </button>
+        </div>
+      </div>
+
+      <!-- SECTION 01: GENERAL SETTINGS -->
+      <section class="profile-card" id="section-general">
+        <div class="profile-card-header">
+          <h3 class="profile-card-title">01 // GENERAL PROFILE SETTINGS</h3>
+          <span class="font-mono text-2xs text-muted">PUBLIC ATTRIBUTION</span>
+        </div>
+        <div class="profile-form-grid">
+          <div class="form-group">
+            <label for="profile-form-name" class="form-label font-mono text-2xs uppercase tracking-widest text-muted">Display Name</label>
+            <input type="text" id="profile-form-name" class="form-input" placeholder="e.g. Dr. Jane Doe" maxlength="100" />
+            <div class="font-mono text-2xs text-muted mt-1" style="font-size: 10px; color: #71717a;">Appears publicly on your approved comments and replies.</div>
+          </div>
+          <div class="form-group">
+            <label for="profile-form-email" class="form-label font-mono text-2xs uppercase tracking-widest text-muted">Account Email (Confidential)</label>
+            <input type="email" id="profile-form-email" class="form-input" readonly />
+            <div class="font-mono text-2xs text-muted mt-1" style="font-size: 10px; color: #71717a;">* Strictly private. Never displayed on public articles or comment cards.</div>
+          </div>
+        </div>
+        <div class="form-group mb-3">
+          <label for="profile-form-bio" class="form-label font-mono text-2xs uppercase tracking-widest text-muted">Short Biography</label>
+          <textarea id="profile-form-bio" class="form-textarea" rows="2" placeholder="Technical focus or systems research background..." maxlength="250"></textarea>
+        </div>
+        <div class="d-flex justify-content-between align-items-center pt-2">
+          <span class="font-mono text-2xs text-muted" style="font-size: 11px;">Changes persist directly to your verified reader account.</span>
+          <button type="button" class="btn btn-primary font-jetbrains" id="profile-btn-save-general">
+            Save Profile Changes
+          </button>
+        </div>
+      </section>
+
+      <!-- SECTION 02: ACCOUNT & IDENTITY PROVIDERS -->
+      <section class="profile-card" id="section-account">
+        <div class="profile-card-header">
+          <h3 class="profile-card-title">02 // ACCOUNT &amp; IDENTITY PROVIDERS</h3>
+          <span class="font-mono text-2xs text-muted">FEDERATED AUTHENTICATION</span>
+        </div>
+        <p class="font-jetbrains text-muted mb-3" style="font-size: 12px; line-height: 1.5; color: #a1a1aa;">
+          Your authenticated session enables cross-device comment synchronization and verified reader status. Additional enterprise identity providers will be supported via our extensible registry.
+        </p>
+        <div id="profile-connected-providers" class="d-flex flex-column gap-2 mb-4">
+          <!-- Populated dynamically via AUTH_PROVIDERS_CONFIG -->
+        </div>
+
+        <div class="p-3 rounded mt-3" style="background: rgba(239, 68, 68, 0.04); border: 1px solid rgba(239, 68, 68, 0.15);">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div>
+              <div class="font-jetbrains font-weight-bold text-light" style="font-size: 12.5px; color: #fca5a5;">Server-Side Account Deletion Request</div>
+              <div class="font-jetbrains text-muted mt-1" style="font-size: 11px; color: #a1a1aa;">
+                Permanently purge your authenticated credentials and personal identifiers under DPDP Act 2023 / GDPR.
+              </div>
+            </div>
+            <button type="button" class="btn btn-outline-danger btn-sm font-jetbrains" id="profile-btn-request-deletion" style="color: #f87171; border-color: rgba(239,68,68,0.4);">
+              Request Account Deletion
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 03: MY ACTIVITY & ENGAGEMENT HISTORY -->
+      <section class="profile-card" id="section-activity">
+        <div class="profile-card-header">
+          <h3 class="profile-card-title">03 // MY ENGAGEMENT HISTORY</h3>
+          <div class="d-flex gap-2">
+            <span class="badge bg-secondary font-jetbrains" id="stat-comments-count" style="font-size: 11px;">0 Comments</span>
+            <span class="badge bg-secondary font-jetbrains" id="stat-likes-count" style="font-size: 11px;">0 Likes</span>
+          </div>
+        </div>
+        <p class="font-jetbrains text-muted mb-3" style="font-size: 12px; line-height: 1.5; color: #a1a1aa;">
+          Database-backed interactions recorded across GreyCircuit technical publications.
+        </p>
+        <div id="profile-activity-list">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- SECTION 04: PRIVACY & DATA RIGHTS -->
+      <section class="profile-card" id="section-privacy">
+        <div class="profile-card-header">
+          <h3 class="profile-card-title">04 // DATA RIGHTS &amp; PRIVACY (DPDP ACT 2023 / GDPR)</h3>
+          <span class="font-mono text-2xs text-muted">COMPLIANCE &amp; SOVEREIGNTY</span>
+        </div>
+        <p class="font-jetbrains text-muted mb-3" style="font-size: 12px; line-height: 1.5; color: #a1a1aa;">
+          Grey Circuit Technologies operates on a fail-closed data architecture. Download your personal data bundle or update consent preferences at any time.
+        </p>
+        <div class="d-flex flex-wrap gap-2 mb-4">
+          <button type="button" class="btn btn-secondary font-jetbrains" id="profile-btn-export-data">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px; vertical-align: -1px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Export Personal Data (JSON)
+          </button>
+          <button type="button" class="btn btn-secondary font-jetbrains" id="profile-btn-manage-consent">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px; vertical-align: -1px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            Consent &amp; Cookie Preferences
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <!-- Guest / Unauthenticated Prompt (Rendered when visitor has no session) -->
+    <div id="profile-guest-view" style="display: none;">
+      <div class="profile-guest-card">
+        <div class="guest-icon-bubble">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </div>
+        <div class="font-mono text-2xs uppercase tracking-widest text-muted mb-2">GUEST SESSION DETECTED</div>
+        <h2 class="profile-guest-title">Authentication Required for Profile Control</h2>
+        <p class="profile-guest-desc">
+          You are currently viewing Grey Circuit Technologies as a pseudonymous guest reader. To manage your permanent profile, sync discussions across devices, or access verified data rights, please sign in with Google.
+        </p>
+        <div class="profile-guest-actions">
+          <button type="button" class="btn btn-primary font-jetbrains" id="btn-profile-guest-signin" style="padding: 10px 22px;">
+            Continue with Google →
+          </button>
+          <a href="index.html" class="btn btn-secondary font-jetbrains" style="padding: 10px 20px;">
+            Return to Blog
+          </a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Corporate Obsidian Footer -->
+  <footer class="blog-footer">
+    <div class="ambient-glow footer-glow" aria-hidden="true"></div>
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col-brand">
+          <a href="https://greycircuit.tech" class="footer-brand font-display">
+            <img src="assets/logo_transparent.png" alt="" width="24" height="28" decoding="async">
+            <span>GREY CIRCUIT</span>
+          </a>
+          <p class="footer-brand-desc font-jetbrains">
+            Applied Intelligence, Autonomous Systems &amp; Resilient Engineering. Authoritative research published by GreyCircuit Technologies.
+          </p>
+        </div>
+
+        <div class="footer-col-nav">
+          <span class="footer-heading font-mono text-xs uppercase tracking-widest text-muted">Platform</span>
+          <ul class="footer-links font-jetbrains">
+            <li><a href="https://greycircuit.tech">Corporate Home</a></li>
+            <li><a href="index.html">Publications Catalog</a></li>
+            <li><a href="https://greycircuit.tech#services">Core Capabilities</a></li>
+            <li><a href="profile.html">Reader Control Plane</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col-nav">
+          <span class="footer-heading font-mono text-xs uppercase tracking-widest text-muted">Research Series</span>
+          <ul class="footer-links font-jetbrains">
+            <li><a href="index.html">GCT THREATSCAPE</a></li>
+            <li><a href="index.html">Field Notes</a></li>
+            <li><a href="index.html">Cyber Intelligence</a></li>
+            <li><a href="index.html">Automation &amp; SWE</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col-nav">
+          <span class="footer-heading font-mono text-xs uppercase tracking-widest text-muted">Governance</span>
+          <ul class="footer-links font-jetbrains">
+            <li><a href="https://greycircuit.tech#contact">Security Disclosures</a></li>
+            <li><a href="https://greycircuit.tech#about">Founder Verification</a></li>
+            <li><a href="profile.html">DPDP Act 2023 Portal</a></li>
+          </ul>
+          <div class="footer-status-pill font-jetbrains">
+            <span class="footer-dot-green"></span>
+            <span>CONTROL PLANE: OPERATIONAL</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom-bar font-jetbrains">
+        <div class="footer-copy">
+          &copy; 2026 GREYCIRCUIT TECHNOLOGIES PRIVATE LIMITED. All rights reserved.
+        </div>
+        <div class="footer-legal-links">
+          <span>Fail-Closed Edge Architecture</span>
+          <span class="footer-sep">&bull;</span>
+          <span>DPDP Act 2023 Aligned</span>
+          <span class="footer-sep">&bull;</span>
+          <span>ISO 27001 Posture</span>
+          <span class="footer-sep">&bull;</span>
+          <a href="#" id="link-privacy-preferences" style="color: inherit; text-decoration: underline;">Cookie &amp; Privacy Preferences</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Reader Profile Modal (Included for guest interactions or modal triggers) -->
+  <div class="reader-modal-backdrop" id="reader-profile-backdrop"></div>
+  <aside class="reader-profile-modal font-inter" id="reader-profile-modal" role="dialog" aria-modal="true" aria-labelledby="modal-profile-title" aria-hidden="true">
+    <div class="reader-modal-header">
+      <div class="d-flex align-items-center gap-2">
+        <span class="font-mono text-2xs uppercase tracking-widest text-muted">READER // CONTROL PLANE</span>
+        <span id="modal-auth-mode-badge" class="badge bg-secondary font-jetbrains" style="font-size: 10px;">Guest Mode</span>
+      </div>
+      <button type="button" class="btn-close-profile-modal" style="background:none; border:none; color:#fff; font-size:20px; cursor:pointer;" aria-label="Close dialog">&times;</button>
+    </div>
+
+    <div class="reader-modal-body">
+      <!-- SECTION 01 — IDENTITY OVERVIEW -->
+      <div class="reader-modal-section no-border" id="modal-sec-overview">
+        <div class="reader-section-header">
+          <span class="reader-section-label">01 // IDENTITY OVERVIEW</span>
+        </div>
+        <div id="modal-guest-notice" class="modal-guest-warning font-jetbrains" style="display: none;">
+          <div class="guest-warning-title">GUEST SESSION ACTIVE</div>
+          <p class="guest-warning-desc">
+            Your pseudonymous guest identity is temporary and tied strictly to this browser session. It does not carry across browsers or devices. Connecting a verified identity provider enables persistent cross-device identity, comments attribution, and authenticated profile control.
+          </p>
+        </div>
+      </div>
+
+      <!-- SECTION 02 — PERSONAL PROFILE -->
+      <div class="reader-modal-section" id="modal-sec-profile">
+        <div class="reader-section-header">
+          <span class="reader-section-label">02 // PERSONAL PROFILE</span>
+        </div>
+        <div class="profile-form-grid">
+          <div class="form-group">
+            <label for="modal-profile-name" class="form-label font-mono text-2xs uppercase tracking-widest text-muted">Display Name</label>
+            <input type="text" id="modal-profile-name" class="form-input" placeholder="e.g. Dr. Jane Doe" maxlength="100" />
+          </div>
+          <div class="form-group">
+            <label for="modal-profile-email" class="form-label font-mono text-2xs uppercase tracking-widest text-muted">Work Email (Confidential)</label>
+            <input type="email" id="modal-profile-email" class="form-input" placeholder="Not provided (session only)" readonly />
+            <div class="font-mono text-2xs text-muted mt-1" style="font-size: 10px; color: #71717a;">* Retained strictly for verification and rate-limiting. Never exposed publicly.</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="modal-profile-bio" class="form-label font-mono text-2xs uppercase tracking-widest text-muted">Short Biography</label>
+          <textarea id="modal-profile-bio" class="form-textarea" rows="2" placeholder="Technical focus or systems research background..." maxlength="250"></textarea>
+        </div>
+      </div>
+
+      <!-- SECTION 03 — ENGAGEMENT HISTORY -->
+      <div class="reader-modal-section" id="modal-sec-engagement">
+        <div class="reader-section-header">
+          <span class="reader-section-label">03 // ENGAGEMENT HISTORY</span>
+        </div>
+        <div id="modal-engagement-history">
+          <!-- Dynamically populated via reader-client.js -->
+        </div>
+      </div>
+
+      <!-- SECTION 04 — DATA RIGHTS & PRIVACY -->
+      <div class="reader-modal-section" id="modal-sec-privacy">
+        <div class="reader-section-header">
+          <span class="reader-section-label">04 // DATA RIGHTS &amp; PRIVACY (DPDP ACT 2023 / GDPR)</span>
+        </div>
+        <p class="font-jetbrains text-muted mb-3" style="font-size: 11px; line-height: 1.5; color: #a1a1aa;">
+          Clearing your guest session purges your pseudonymous tokens and local engagement records immediately from this browser. For authenticated accounts, server-side data deletion requests can be initiated securely.
+        </p>
+        <div class="d-flex flex-wrap gap-2">
+          <button type="button" class="btn btn-secondary btn-sm font-jetbrains" id="modal-btn-export-data" style="font-size: 11px; padding: 6px 14px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: -1px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Export Personal Data
+          </button>
+          <button type="button" class="btn btn-outline-danger btn-sm font-jetbrains" id="modal-btn-delete-account" style="font-size: 11px; padding: 6px 14px; color: #f87171; border-color: rgba(239,68,68,0.4);">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: -1px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            Clear Session / Deletion
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm font-jetbrains" id="modal-btn-privacy-pref" style="font-size: 11px; padding: 6px 14px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: -1px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            Privacy Preferences
+          </button>
+        </div>
+      </div>
+
+      <!-- SECTION 05 — IDENTITY PROVIDERS -->
+      <div class="reader-modal-section" id="modal-sec-providers">
+        <div class="reader-section-header">
+          <span class="reader-section-label">05 // IDENTITY PROVIDERS</span>
+        </div>
+        <p class="text-muted font-jetbrains mb-3" style="font-size: 11px; line-height: 1.45; color: #a1a1aa;">
+          Connect a verified identity provider to maintain persistent authenticated identity, signed comments, and engagement across supported devices.
+        </p>
+        <div id="modal-identity-providers-list" class="d-flex flex-column gap-2">
+          <!-- Populated dynamically via extensible provider registry -->
+        </div>
+      </div>
+    </div>
+
+    <div class="reader-modal-footer">
+      <button type="button" class="btn btn-primary font-jetbrains" id="modal-btn-save-profile">Save Profile</button>
+      <button type="button" class="btn btn-secondary font-jetbrains btn-close-profile-modal">Close</button>
+    </div>
+  </aside>
+
+  <!-- Cookie & Privacy Preferences Modal (DPDP Act 2023 / GDPR) -->
+  <div class="reader-modal-backdrop" id="cookie-preferences-backdrop"></div>
+  <aside class="cookie-preferences-modal font-inter" id="cookie-preferences-modal" role="dialog" aria-modal="true" aria-labelledby="modal-cookie-title" aria-hidden="true">
+    <div class="reader-modal-header">
+      <div class="d-flex align-items-center gap-2">
+        <span class="font-mono text-2xs uppercase tracking-widest text-muted">DATA GOVERNANCE // PREFERENCES</span>
+        <span class="badge bg-secondary font-jetbrains" style="font-size: 10px;">DPDP 2023 Aligned</span>
+      </div>
+      <button type="button" class="btn-close-cookie-modal" style="background:none; border:none; color:#a1a1aa; font-size:20px; cursor:pointer;" aria-label="Close dialog">&times;</button>
+    </div>
+
+    <div class="reader-modal-body" style="overflow-y: auto; max-height: calc(88vh - 140px); display: flex; flex-direction: column; gap: 16px;">
+      <div>
+        <h3 id="modal-cookie-title" class="font-jetbrains" style="font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 6px;">Privacy &amp; Cookie Preferences</h3>
+        <p class="font-mono text-xs" style="color: #a1a1aa; line-height: 1.5; margin-bottom: 0;">
+          Configure how GreyCircuit Technologies stores and accesses data in your browser. All identifiers are stored locally on your device in compliance with the Digital Personal Data Protection Act (DPDP) 2023 and GDPR guidelines.
+        </p>
+      </div>
+
+      <!-- Preference Options List -->
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <!-- Option 1: Essential (Required) -->
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 14px 16px;">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="font-jetbrains" style="font-size: 13px; font-weight: 600; color: #fff;">Strictly Essential &amp; Security</span>
+                <span class="badge font-mono" style="font-size: 9px; background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3);">Always Active</span>
+              </div>
+              <p class="font-mono text-xs" style="color: #71717a; margin-top: 4px; margin-bottom: 0; line-height: 1.4;">
+                Required for core website navigation, rate-limiting fraud protection, session security tokens, and consent record storage.
+              </p>
+            </div>
+            <input type="checkbox" checked disabled style="cursor: not-allowed; accent-color: #3b82f6; width: 16px; height: 16px; margin-top: 3px;">
+          </div>
+        </div>
+
+        <!-- Option 2: Reader Preferences -->
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 14px 16px;">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+            <div>
+              <span class="font-jetbrains" style="font-size: 13px; font-weight: 600; color: #fff;">Functional &amp; Reader Identity</span>
+              <p class="font-mono text-xs" style="color: #71717a; margin-top: 4px; margin-bottom: 0; line-height: 1.4;">
+                Preserves your guest display name, profile biography, avatar styling, and engagement state locally across visits.
+              </p>
+            </div>
+            <input type="checkbox" id="pref-category-preferences" checked style="cursor: pointer; accent-color: #3b82f6; width: 16px; height: 16px; margin-top: 3px;">
+          </div>
+        </div>
+
+        <!-- Option 3: Analytics / Telemetry -->
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 14px 16px;">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+            <div>
+              <span class="font-jetbrains" style="font-size: 13px; font-weight: 600; color: #fff;">Telemetry &amp; Diagnostics</span>
+              <p class="font-mono text-xs" style="color: #71717a; margin-top: 4px; margin-bottom: 0; line-height: 1.4;">
+                Pseudonymous telemetry to evaluate article popularity, performance metrics, and application stability. No commercial ad tracking.
+              </p>
+            </div>
+            <input type="checkbox" id="pref-category-analytics" style="cursor: pointer; accent-color: #3b82f6; width: 16px; height: 16px; margin-top: 3px;">
+          </div>
+        </div>
+      </div>
+
+      <!-- Legal Notice & Data Protection Officer Contact -->
+      <div style="padding: 10px 14px; background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.15); border-radius: 8px;">
+        <p class="font-mono text-2xs" style="color: #93c5fd; margin-bottom: 0; line-height: 1.4;">
+          <strong>Data Fiduciary:</strong> GreyCircuit Technologies Private Limited.<br>
+          For privacy inquiries or to exercise your DPDP statutory rights (Correction, Erasure, Grievance), contact our grievance officer at <a href="mailto:privacy@greycircuit.tech" style="color: #60a5fa; text-decoration: underline;">privacy@greycircuit.tech</a>.
+        </p>
+      </div>
+    </div>
+
+    <div class="reader-modal-footer" style="padding: 1rem 1.6rem; border-top: 1px solid rgba(255,255,255,0.07); display: flex; align-items: center; justify-content: space-between; gap: 10px; background: rgba(255,255,255,0.015);">
+      <button type="button" class="btn btn-secondary btn-sm font-jetbrains btn-close-cookie-modal" style="font-size: 11px; padding: 7px 14px;">Cancel</button>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" class="btn btn-secondary btn-sm font-jetbrains" id="btn-pref-reject-all" style="font-size: 11px; padding: 7px 14px;">Reject Optional</button>
+        <button type="button" class="btn btn-primary btn-sm font-jetbrains" id="btn-save-cookie-preferences" style="font-size: 11px; padding: 7px 16px;">Save Preferences</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- First-Visit Privacy & Cookie Consent Banner -->
+  <div class="privacy-consent-banner" id="privacy-consent-banner" role="region" aria-label="Privacy and Cookie Consent">
+    <div class="consent-inner">
+      <div style="flex: 1; min-width: 280px;">
+        <div class="font-mono text-2xs uppercase tracking-widest text-muted mb-1">PRIVACY &amp; DATA GOVERNANCE // GCT</div>
+        <p class="small text-light mb-0" style="font-size: 12.5px; line-height: 1.5; color: #d4d4d8;">
+          GreyCircuit Technologies collects essential session data and pseudonymous technical identifiers for security, rate-limiting, and reader engagement. Optional telemetry and preference cookies require your explicit consent.
+        </p>
+      </div>
+      <div class="consent-actions font-jetbrains">
+        <button type="button" class="btn btn-primary btn-sm" id="btn-consent-accept-all" style="padding: 8px 16px; font-size: 11px;">Accept All</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-consent-reject-opt" style="padding: 8px 16px; font-size: 11px;">Reject Optional</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-consent-manage" style="padding: 8px 12px; font-size: 11px;">Manage Preferences</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="config.js"></script>
+  <script src="vendor/supabase/supabase.js"></script>
+  <script src="reader-client.js" defer></script>
+  <script src="script.js" defer></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Initialize profile page controller once reader client is ready
+      const client = window.readerClient || window.ReaderClient;
+      if (client) {
+        await client.initPromise;
+        client.initProfilePage();
+      } else {
+        window.addEventListener('load', async () => {
+          const c = window.readerClient || window.ReaderClient;
+          if (c) {
+            await c.initPromise;
+            c.initProfilePage();
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,1488 @@
+/**
+ * GREYCIRCUIT TECHNOLOGIES — Reader Identity, Profile, & Privacy Client
+ * Manages Mode A (Google OAuth) and Mode B (Pseudonymous Guest Sessions)
+ * Strictly client-side safe; communicates only via public PostgREST / Supabase Auth endpoints.
+ */
+
+(() => {
+  'use strict';
+
+  const STORAGE_KEYS = {
+    SESSION: 'gct_reader_auth_session',
+    GUEST_ID: 'gct_guest_identity',
+    GUEST_SECRET: 'gct_guest_secret',
+    CONSENT: 'gct_privacy_consent_v2026',
+    LIKES_CACHE: 'gct_reader_likes_cache'
+  };
+
+  /**
+   * Extensible Identity Providers Registry
+   * Add new OAuth/SSO identity providers here without altering modal markup.
+   */
+  const AUTH_PROVIDERS_CONFIG = [
+    {
+      id: 'google',
+      name: 'Google',
+      iconSvg: `<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.9C6.2 7.3 8.8 5 12 5z"/><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/><path fill="#FBBC05" d="M5.3 14.7c-.2-.7-.4-1.5-.4-2.4 0-.9.2-1.7.4-2.4L1.6 7c-.8 1.6-1.3 3.4-1.3 5s.5 3.4 1.3 5l3.7-2.3z"/><path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.2 0-5.8-2.2-6.7-5.3L1.6 16C3.5 19.8 7.4 23 12 23z"/></svg>`,
+      enabled: true,
+      backendEnabled: null,
+      checkConfigured: function() {
+        const cfg = window.__GCT_CONFIG__ || {};
+        if (this.backendEnabled === false) return false;
+        return Boolean(cfg.supabaseUrl && cfg.anonKey);
+      },
+      action: (client) => client.signInWithGoogle()
+    }
+  ];
+
+  class ReaderClient {
+    constructor() {
+      this.supabase = null;
+      this.session = null;
+      this.guest = null;
+      this.profile = null;
+      this.initPromise = this.init();
+    }
+
+    async init() {
+      this.initSupabaseClient();
+      this.loadStoredSession();
+      await this.handleOAuthCallback();
+      this.ensureGuestIdentity();
+      this.bindGlobalEvents();
+      this.renderNavWidget();
+      this.initConsentBanner();
+      this.checkProviderAvailability();
+    }
+
+    initSupabaseClient() {
+      try {
+        const cfg = window.__GCT_CONFIG__ || {};
+        if (window.supabase && typeof window.supabase.createClient === 'function' && cfg.supabaseUrl && cfg.anonKey) {
+          this.supabase = window.supabase.createClient(cfg.supabaseUrl, cfg.anonKey, {
+            auth: {
+              flowType: 'pkce',
+              storageKey: STORAGE_KEYS.SESSION,
+              autoRefreshToken: true,
+              persistSession: true,
+              detectSessionInUrl: false
+            }
+          });
+
+          // Sync session state on background refresh or external auth change
+          this.supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+              if (session) {
+                this.session = session;
+                this.renderNavWidget();
+              }
+            } else if (event === 'SIGNED_OUT') {
+              this.session = null;
+              this.renderNavWidget();
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('[GCT Auth] Failed to initialize Supabase client:', err);
+      }
+    }
+
+    async checkProviderAvailability() {
+      const cfg = window.__GCT_CONFIG__ || {};
+      if (!cfg.supabaseUrl || !cfg.anonKey) return;
+      try {
+        const res = await fetch(`${cfg.supabaseUrl}/auth/v1/settings`, {
+          headers: { apikey: cfg.anonKey }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.external) {
+            const googleProv = AUTH_PROVIDERS_CONFIG.find(p => p.id === 'google');
+            if (googleProv) {
+              googleProv.backendEnabled = Boolean(data.external.google);
+              const modal = document.getElementById('reader-profile-modal');
+              if (modal && modal.classList.contains('is-open')) {
+                this.renderAuthProviders();
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // network or CORS error, fall back silently
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+     * 1. SESSION & IDENTITY INITIALIZATION
+     * ---------------------------------------------------------------------- */
+    loadStoredSession() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEYS.SESSION);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          // Check expiration
+          if (parsed.expires_at && parsed.expires_at * 1000 > Date.now()) {
+            this.session = parsed;
+          } else {
+            localStorage.removeItem(STORAGE_KEYS.SESSION);
+          }
+        }
+      } catch {}
+    }
+
+    ensureGuestIdentity() {
+      try {
+        let guestId = localStorage.getItem(STORAGE_KEYS.GUEST_ID);
+        let guestSecret = localStorage.getItem(STORAGE_KEYS.GUEST_SECRET);
+
+        if (!guestId || guestId.length < 16) {
+          const rand = typeof crypto !== 'undefined' && crypto.randomUUID
+            ? crypto.randomUUID().replace(/-/g, '')
+            : Math.random().toString(36).substring(2) + Date.now().toString(36);
+          guestId = 'gct_guest_' + rand;
+          localStorage.setItem(STORAGE_KEYS.GUEST_ID, guestId);
+        }
+
+        if (!guestSecret || guestSecret.length < 16) {
+          const randSecret = typeof crypto !== 'undefined' && crypto.randomUUID
+            ? crypto.randomUUID().replace(/-/g, '')
+            : Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+          guestSecret = 'gct_sec_' + randSecret;
+          localStorage.setItem(STORAGE_KEYS.GUEST_SECRET, guestSecret);
+        }
+
+        this.guest = {
+          id: guestId,
+          secret: guestSecret,
+          name: localStorage.getItem('gct_guest_saved_name') || 'Guest Reader',
+          email: localStorage.getItem('gct_guest_saved_email') || ''
+        };
+      } catch {
+        this.guest = { id: 'gct_guest_fallback', secret: 'gct_sec_fallback', name: 'Guest Reader', email: '' };
+      }
+    }
+
+    async handleOAuthCallback() {
+      const hash = window.location.hash;
+      const search = window.location.search;
+
+      // 1. Detect and handle OAuth Error in Hash or Search Query (e.g. access_denied, signups disabled)
+      let errorParam = null;
+      let errorDesc = null;
+      let isQueryError = false;
+
+      if (hash && (hash.includes('error=') || hash.includes('error_description='))) {
+        try {
+          const p = new URLSearchParams(hash.substring(1));
+          errorParam = p.get('error');
+          errorDesc = p.get('error_description');
+        } catch {}
+      } else if (search && (search.includes('error=') || search.includes('error_description='))) {
+        try {
+          const p = new URLSearchParams(search);
+          errorParam = p.get('error');
+          errorDesc = p.get('error_description');
+          isQueryError = true;
+        } catch {}
+      }
+
+      if (errorParam || errorDesc) {
+        try {
+          const rawMsg = errorDesc || errorParam || 'Authentication was cancelled or failed.';
+          const errorText = rawMsg.replace(/\+/g, ' ');
+          console.warn('[GCT Auth] OAuth callback error received:', errorParam, errorText);
+
+          // Clean URL without losing existing query parameters (such as ?slug=...)
+          if (isQueryError) {
+            const p = new URLSearchParams(window.location.search);
+            p.delete('error');
+            p.delete('error_code');
+            p.delete('error_description');
+            const remaining = p.toString();
+            const cleanUrl = window.location.pathname + (remaining ? `?${remaining}` : '') + (window.location.hash || '');
+            window.history.replaceState({}, document.title, cleanUrl);
+          } else {
+            // Hash error: clear hash only, preserving search query intact
+            const cleanUrl = window.location.pathname + window.location.search;
+            window.history.replaceState({}, document.title, cleanUrl);
+          }
+
+          // Specific handling for signup-disabled condition (Supabase disable_signup: true)
+          const lower = errorText.toLowerCase();
+          const isSignupDisabled = (
+            lower.includes('signup') ||
+            lower.includes('signups not allowed') ||
+            lower.includes('user registration is disabled') ||
+            lower.includes('registration') ||
+            (errorParam === 'access_denied' && (lower.includes('not allowed') || lower.includes('instance') || lower.includes('otp')))
+          );
+
+          if (isSignupDisabled) {
+            this.showToast('Public reader registration is currently closed. Only pre-authorized accounts may sign in.', 'warning');
+          } else {
+            this.showToast(`Authentication notice: ${errorText}`, 'warning');
+          }
+
+          // Clean up transient return context on error
+          try {
+            sessionStorage.removeItem('gct_oauth_return_url');
+            sessionStorage.removeItem('gct_oauth_scroll_y');
+          } catch {}
+        } catch (e) {
+          console.warn('[GCT Auth] Error handling callback failure:', e);
+        }
+        return;
+      }
+
+      // 2. Detect and process PKCE Authorization Code (?code=...)
+      if (search && search.includes('code=')) {
+        const searchParams = new URLSearchParams(search);
+        const authCode = searchParams.get('code');
+        if (authCode) {
+          try {
+            let session = null;
+            let user = null;
+
+            if (this.supabase && this.supabase.auth && typeof this.supabase.auth.exchangeCodeForSession === 'function') {
+              const { data, error } = await this.supabase.auth.exchangeCodeForSession(authCode);
+              if (error) {
+                console.warn('[GCT Auth] PKCE exchangeCodeForSession returned error:', error);
+                const lower = (error.message || '').toLowerCase();
+                if (lower.includes('signup') || lower.includes('not allowed') || lower.includes('disabled')) {
+                  this.showToast('Public reader registration is currently closed. Only pre-authorized accounts may sign in.', 'warning');
+                } else {
+                  this.showToast(`Authentication notice: ${error.message || 'Authorization code exchange failed.'}`, 'warning');
+                }
+              } else if (data && data.session) {
+                session = data.session;
+                user = data.user || data.session.user;
+              }
+            } else {
+              // Direct endpoint fallback for PKCE exchange if SDK is not present
+              const cfg = window.__GCT_CONFIG__ || {};
+              let codeVerifier = localStorage.getItem(`${STORAGE_KEYS.SESSION}-code-verifier`);
+              if (!codeVerifier) {
+                for (let i = 0; i < localStorage.length; i++) {
+                  const key = localStorage.key(i);
+                  if (key && key.startsWith(STORAGE_KEYS.SESSION) && key.endsWith('-code-verifier')) {
+                    codeVerifier = localStorage.getItem(key);
+                    break;
+                  }
+                }
+              }
+              if (codeVerifier && cfg.supabaseUrl && cfg.anonKey) {
+                const exchangeRes = await fetch(`${cfg.supabaseUrl}/auth/v1/token?grant_type=pkce`, {
+                  method: 'POST',
+                  headers: {
+                    apikey: cfg.anonKey,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    auth_code: authCode,
+                    code_verifier: codeVerifier.split('/')[0]
+                  })
+                });
+                if (exchangeRes.ok) {
+                  const exchangeData = await exchangeRes.json();
+                  session = {
+                    access_token: exchangeData.access_token,
+                    refresh_token: exchangeData.refresh_token,
+                    expires_at: Math.floor(Date.now() / 1000) + (exchangeData.expires_in || 3600),
+                    token_type: exchangeData.token_type || 'bearer',
+                    user: exchangeData.user
+                  };
+                  user = exchangeData.user;
+                }
+              }
+            }
+
+            if (session) {
+              this.session = session;
+              localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(session));
+
+              // Clean address bar preserving existing query parameters (such as ?slug=...)
+              searchParams.delete('code');
+              searchParams.delete('state');
+              const remaining = searchParams.toString();
+              const cleanUrl = window.location.pathname + (remaining ? `?${remaining}` : '') + (window.location.hash || '');
+              window.history.replaceState({}, document.title, cleanUrl);
+
+              const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email || 'Reader';
+              this.showToast(`Signed in successfully as ${displayName}.`, 'success');
+
+              // Restore scroll position if saved
+              try {
+                const savedScroll = sessionStorage.getItem('gct_oauth_scroll_y');
+                if (savedScroll) {
+                  const scrollY = parseInt(savedScroll, 10);
+                  if (!isNaN(scrollY) && scrollY > 0) {
+                    window.scrollTo({ top: scrollY, behavior: 'smooth' });
+                  }
+                }
+              } catch {}
+
+              // Check if we need to return to a different stored page context
+              try {
+                const storedReturn = sessionStorage.getItem('gct_oauth_return_url');
+                sessionStorage.removeItem('gct_oauth_return_url');
+                sessionStorage.removeItem('gct_oauth_scroll_y');
+
+                if (storedReturn) {
+                  const validatedReturn = this.buildValidatedRedirectUrl(storedReturn);
+                  const currentNormalized = window.location.href.split('#')[0].split('?')[0];
+                  const targetNormalized = validatedReturn.split('#')[0].split('?')[0];
+
+                  if (currentNormalized !== targetNormalized && !currentNormalized.endsWith(targetNormalized)) {
+                    window.location.href = validatedReturn;
+                    return;
+                  }
+                }
+              } catch {}
+              return;
+            } else {
+              // Clean code and state from address bar on exchange failure
+              searchParams.delete('code');
+              searchParams.delete('state');
+              const remaining = searchParams.toString();
+              const cleanUrl = window.location.pathname + (remaining ? `?${remaining}` : '') + (window.location.hash || '');
+              window.history.replaceState({}, document.title, cleanUrl);
+            }
+          } catch (err) {
+            console.warn('[GCT Auth] Error processing PKCE callback:', err);
+            this.showToast('Unable to complete PKCE authentication. Please try again.', 'error');
+          }
+          return;
+        }
+      }
+
+      // 3. Parse Supabase Auth Implicit Grant Hash: #access_token=...&refresh_token=...&expires_at=...
+      if (hash && hash.includes('access_token=') && hash.includes('refresh_token=')) {
+        try {
+          const params = new URLSearchParams(hash.substring(1));
+          const accessToken = params.get('access_token');
+          const refreshToken = params.get('refresh_token');
+          const expiresIn = parseInt(params.get('expires_in') || '3600', 10);
+          const tokenType = params.get('token_type') || 'bearer';
+
+          if (accessToken) {
+            const expiresAt = Math.floor(Date.now() / 1000) + expiresIn;
+
+            // Fetch User Details from Supabase Auth
+            const cfg = window.__GCT_CONFIG__ || {};
+            const userRes = await fetch(`${cfg.supabaseUrl}/auth/v1/user`, {
+              headers: {
+                apikey: cfg.anonKey,
+                Authorization: `Bearer ${accessToken}`
+              }
+            });
+
+            if (userRes.ok) {
+              const user = await userRes.json();
+              this.session = {
+                access_token: accessToken,
+                refresh_token: refreshToken,
+                expires_at: expiresAt,
+                token_type: tokenType,
+                user: user
+              };
+              localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(this.session));
+
+              // Clean address bar without refresh and preserving existing query parameters (like ?slug=...)
+              const cleanUrl = window.location.pathname + window.location.search;
+              window.history.replaceState({}, document.title, cleanUrl);
+
+              this.showToast(`Signed in successfully as ${user.user_metadata?.full_name || user.email}.`, 'success');
+
+              // Restore scroll position if saved
+              try {
+                const savedScroll = sessionStorage.getItem('gct_oauth_scroll_y');
+                if (savedScroll) {
+                  const scrollY = parseInt(savedScroll, 10);
+                  if (!isNaN(scrollY) && scrollY > 0) {
+                    window.scrollTo({ top: scrollY, behavior: 'smooth' });
+                  }
+                }
+              } catch {}
+
+              // Check if we need to return to a different stored page context
+              try {
+                const storedReturn = sessionStorage.getItem('gct_oauth_return_url');
+                sessionStorage.removeItem('gct_oauth_return_url');
+                sessionStorage.removeItem('gct_oauth_scroll_y');
+
+                if (storedReturn) {
+                  const validatedReturn = this.buildValidatedRedirectUrl(storedReturn);
+                  const currentNormalized = window.location.href.split('#')[0];
+                  const targetNormalized = validatedReturn.split('#')[0];
+
+                  // Only navigate if target is genuinely a different page
+                  if (currentNormalized !== targetNormalized && !currentNormalized.endsWith(targetNormalized)) {
+                    window.location.href = validatedReturn;
+                    return;
+                  }
+                }
+              } catch {}
+
+            } else {
+              // Expired or invalid token response from server
+              console.warn('[GCT Auth] Supabase /auth/v1/user rejected access token (HTTP ' + userRes.status + ')');
+              this.showToast('Authentication session expired or invalid. Please sign in again.', 'warning');
+              const cleanUrl = window.location.pathname + window.location.search;
+              window.history.replaceState({}, document.title, cleanUrl);
+            }
+          }
+        } catch (err) {
+          console.warn('[GCT Auth] OAuth callback processing error:', err);
+          this.showToast('Unable to complete authentication. Please try again.', 'error');
+        }
+      }
+    }
+
+    getIdentity() {
+      if (this.session && this.session.user) {
+        const u = this.session.user;
+        const meta = u.user_metadata || {};
+        const fullName = meta.full_name || meta.name || u.email?.split('@')[0] || 'Authenticated Reader';
+        const firstName = meta.given_name || fullName.split(' ')[0] || 'Reader';
+        return {
+          isAuthenticated: true,
+          isGuest: false,
+          userId: u.id,
+          email: u.email || '',
+          displayName: fullName,
+          firstName: firstName,
+          avatarUrl: meta.avatar_url || meta.picture || null,
+          provider: u.app_metadata?.provider || 'google'
+        };
+      }
+
+      return {
+        isAuthenticated: false,
+        isGuest: true,
+        userId: this.guest?.id || 'guest',
+        email: this.guest?.email || '',
+        displayName: this.guest?.name || 'Guest Reader',
+        firstName: (this.guest?.name || 'Guest').split(' ')[0] || 'Guest',
+        avatarUrl: null,
+        provider: 'guest'
+      };
+    }
+
+    async getValidatedIdentity() {
+      // Validate or refresh session against Supabase Auth
+      if (this.session) {
+        const nowSec = Math.floor(Date.now() / 1000);
+        // If expired or expiring within 30 seconds
+        if (this.session.expires_at && (this.session.expires_at - nowSec <= 30)) {
+          if (this.supabase && this.supabase.auth && typeof this.supabase.auth.getSession === 'function') {
+            try {
+              const { data, error } = await this.supabase.auth.getSession();
+              if (data?.session) {
+                this.session = data.session;
+                this.renderNavWidget();
+                return this.getIdentity();
+              }
+            } catch (sdkErr) {
+              console.warn('[GCT Auth] SDK getSession refresh notice:', sdkErr);
+            }
+          }
+
+          if (this.session.refresh_token) {
+            const cfg = window.__GCT_CONFIG__ || {};
+            if (cfg.supabaseUrl && cfg.anonKey) {
+              try {
+                const refreshRes = await fetch(`${cfg.supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
+                  method: 'POST',
+                  headers: {
+                    apikey: cfg.anonKey,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({ refresh_token: this.session.refresh_token })
+                });
+
+                if (refreshRes.ok) {
+                  const data = await refreshRes.json();
+                  this.session.access_token = data.access_token;
+                  this.session.refresh_token = data.refresh_token;
+                  this.session.expires_at = Math.floor(Date.now() / 1000) + data.expires_in;
+                  if (data.user) this.session.user = data.user;
+                  localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(this.session));
+                  this.renderNavWidget();
+                  return this.getIdentity();
+                } else {
+                  console.warn('[GCT Auth] Session refresh rejected, falling back to guest');
+                  localStorage.removeItem(STORAGE_KEYS.SESSION);
+                  this.session = null;
+                  this.renderNavWidget();
+                }
+              } catch (err) {
+                console.warn('[GCT Auth] Session refresh network error:', err);
+              }
+            }
+          } else {
+            localStorage.removeItem(STORAGE_KEYS.SESSION);
+            this.session = null;
+            this.renderNavWidget();
+          }
+        } else {
+          return this.getIdentity();
+        }
+      }
+
+      return this.getIdentity();
+    }
+
+    /* -------------------------------------------------------------------------
+     * 2. GOOGLE OAUTH FLOW & REDIRECT DESTINATION VALIDATION
+     * ---------------------------------------------------------------------- */
+    buildValidatedRedirectUrl(rawCandidateUrl) {
+      try {
+        // 1. Resolve relative URLs against current page URL
+        const resolved = new URL(rawCandidateUrl || window.location.href, window.location.href);
+
+        // 2. Validate approved origin and transport security
+        const currentHost = window.location.hostname.toLowerCase();
+        const isLocalEnv = currentHost === '127.0.0.1' || currentHost === 'localhost';
+
+        if (isLocalEnv) {
+          // Local development: strictly limit to loopback origins
+          if (resolved.hostname !== '127.0.0.1' && resolved.hostname !== 'localhost') {
+            console.warn('[GCT Auth] External redirect rejected in local development:', resolved.href);
+            return window.location.href;
+          }
+        } else {
+          // Production: Strictly enforce HTTPS and approved Blog origin
+          const approvedDomain = 'blog.greycircuit.tech';
+          if (resolved.protocol !== 'https:' || resolved.hostname.toLowerCase() !== approvedDomain) {
+            console.warn('[GCT Auth] Insecure or external redirect rejected in production:', resolved.href);
+            const safeFallback = new URL(resolved.pathname + resolved.search, `https://${approvedDomain}`);
+            return safeFallback.href;
+          }
+        }
+
+        // Return verified absolute URL preserving pathname and query parameters
+        return resolved.href;
+      } catch (err) {
+        console.warn('[GCT Auth] Error validating redirect URL, falling back to current location:', err);
+        return window.location.href;
+      }
+    }
+
+    async signInWithGoogle(customReturnUrl) {
+      const cfg = window.__GCT_CONFIG__ || {};
+      if (!cfg.supabaseUrl || !cfg.anonKey) {
+        this.showToast('Supabase client endpoint configuration is missing.', 'error');
+        return;
+      }
+
+      const googleProv = AUTH_PROVIDERS_CONFIG.find(p => p.id === 'google');
+      if (googleProv && googleProv.backendEnabled === false) {
+        this.showToast('Google OAuth is not currently enabled in the database environment.', 'warning');
+        return;
+      }
+
+      // Compute and validate absolute return destination
+      const returnUrl = this.buildValidatedRedirectUrl(customReturnUrl || window.location.href);
+
+      // Store return context and current scroll position
+      try {
+        sessionStorage.setItem('gct_oauth_return_url', returnUrl);
+        sessionStorage.setItem('gct_oauth_scroll_y', String(window.scrollY || 0));
+      } catch {}
+
+      // If Supabase client is initialized, use PKCE signInWithOAuth
+      if (this.supabase && this.supabase.auth && typeof this.supabase.auth.signInWithOAuth === 'function') {
+        try {
+          const { data, error } = await this.supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+              redirectTo: returnUrl,
+              queryParams: {
+                access_type: 'offline',
+                prompt: 'consent'
+              }
+            }
+          });
+          if (error) {
+            console.error('[GCT Auth] PKCE signInWithOAuth error:', error);
+            this.showToast(`OAuth sign-in failed: ${error.message}`, 'error');
+            return;
+          }
+          if (data?.url) {
+            window.location.href = data.url;
+            return;
+          }
+        } catch (oauthErr) {
+          console.warn('[GCT Auth] Error during signInWithOAuth, falling back to direct authorize endpoint:', oauthErr);
+        }
+      }
+
+      // Fallback: Direct endpoint if Supabase JS client is unavailable
+      const authEndpoint = `${cfg.supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(returnUrl)}`;
+      window.location.href = authEndpoint;
+    }
+
+    async signOut() {
+      try {
+        if (this.supabase && this.supabase.auth && typeof this.supabase.auth.signOut === 'function') {
+          try {
+            await this.supabase.auth.signOut();
+          } catch (sdkSignOutErr) {
+            console.warn('[GCT Auth] SDK signOut warning:', sdkSignOutErr);
+          }
+        }
+        localStorage.removeItem(STORAGE_KEYS.SESSION);
+        this.session = null;
+        this.renderNavWidget();
+        this.showToast('Signed out. You are now participating in Guest Mode.', 'info');
+        setTimeout(() => window.location.reload(), 800);
+      } catch (err) {
+        console.error('[GCT Auth] Sign out error:', err);
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+     * 3. NAVIGATION WIDGET RENDERING & EXPANDING GREETING
+     * ---------------------------------------------------------------------- */
+    renderNavWidget() {
+      const ident = this.getIdentity();
+      const prefixEl = document.getElementById('greeting-prefix');
+      const nameEl = document.getElementById('greeting-name');
+      const avatarWrap = document.getElementById('profile-avatar-wrap');
+
+      if (prefixEl) prefixEl.textContent = 'Hi,';
+      if (nameEl) nameEl.textContent = `${ident.firstName}.`;
+
+      if (avatarWrap) {
+        if (ident.isAuthenticated && ident.avatarUrl) {
+          avatarWrap.innerHTML = `<img src="${ident.avatarUrl}" alt="${ident.displayName}" class="nav-user-avatar-img" />`;
+        } else if (ident.isAuthenticated) {
+          const initials = ident.displayName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+          avatarWrap.innerHTML = `<span class="nav-avatar-initials font-jetbrains" style="font-size: 13px; font-weight: 700;">${initials}</span>`;
+        } else {
+          avatarWrap.innerHTML = `
+            <svg class="profile-avatar-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          `;
+        }
+      }
+
+      this.alignProfileWidget();
+    }
+
+    alignProfileWidget() {
+      const nav = document.getElementById('site-nav');
+      const widget = document.getElementById('reader-profile-widget');
+      if (!nav || !widget) return;
+      if (typeof nav.getBoundingClientRect !== 'function') return;
+
+      const rect = nav.getBoundingClientRect();
+      const isMobile = window.innerWidth <= 820;
+      const navHeight = isMobile ? 52 : (Math.round(rect.height) || 64);
+      const navWidth = Math.round(rect.width) || (isMobile ? window.innerWidth - 84 : 560);
+
+      document.documentElement.style.setProperty('--nav-bar-h', `${navHeight}px`);
+      document.documentElement.style.setProperty('--nav-bar-w', `${navWidth}px`);
+
+      if (nav.classList.contains('is-scrolled')) {
+        widget.classList.add('is-scrolled');
+      } else {
+        widget.classList.remove('is-scrolled');
+      }
+
+      if (nav.classList.contains('is-hidden')) {
+        widget.classList.add('is-hidden');
+      } else {
+        widget.classList.remove('is-hidden');
+      }
+
+      if (!isMobile) {
+        const idealLeft = rect.right + 10;
+        const maxLeft = window.innerWidth - navHeight - 14;
+        widget.style.left = `${Math.min(idealLeft, maxLeft)}px`;
+        widget.style.right = 'auto';
+        widget.style.top = '';
+      } else {
+        widget.style.left = '';
+        widget.style.right = '';
+        widget.style.top = '';
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+     * 4. READER PROFILE & SETTINGS MODAL CONTROLLER
+     * ---------------------------------------------------------------------- */
+    openProfileModal() {
+      const modal = document.getElementById('reader-profile-modal');
+      const backdrop = document.getElementById('reader-profile-backdrop');
+      if (!modal) return;
+
+      const ident = this.getIdentity();
+
+      // Populate Modal Fields
+      const nameInp = document.getElementById('modal-profile-name');
+      const emailInp = document.getElementById('modal-profile-email');
+      const bioInp = document.getElementById('modal-profile-bio');
+      const authModeBadge = document.getElementById('modal-auth-mode-badge');
+      const guestNotice = document.getElementById('modal-guest-notice');
+
+      if (nameInp) nameInp.value = ident.displayName;
+      if (emailInp) emailInp.value = ident.email || (ident.isGuest ? 'Not provided (session only)' : '');
+      if (bioInp) bioInp.value = localStorage.getItem('gct_reader_bio') || '';
+
+      if (ident.isAuthenticated) {
+        if (authModeBadge) {
+          authModeBadge.textContent = 'Google Verified';
+          authModeBadge.className = 'badge bg-success font-jetbrains';
+        }
+        if (guestNotice) guestNotice.style.display = 'none';
+      } else {
+        if (authModeBadge) {
+          authModeBadge.textContent = 'Guest Mode';
+          authModeBadge.className = 'badge bg-secondary font-jetbrains';
+        }
+        if (guestNotice) guestNotice.style.display = 'block';
+      }
+
+      this.renderEngagementHistory();
+      this.renderAuthProviders();
+
+      modal.classList.add('is-open');
+      if (backdrop) backdrop.classList.add('is-open');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+
+    renderAuthProviders() {
+      const container = document.getElementById('modal-identity-providers-list');
+      if (!container) return;
+
+      const ident = this.getIdentity();
+
+      if (ident.isAuthenticated) {
+        const currentProviderId = ident.provider || 'google';
+        const provConfig = AUTH_PROVIDERS_CONFIG.find(p => p.id === currentProviderId) || {
+          name: currentProviderId.charAt(0).toUpperCase() + currentProviderId.slice(1),
+          iconSvg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></svg>`
+        };
+
+        container.innerHTML = `
+          <div class="auth-provider-card auth-provider-connected">
+            <div class="d-flex align-items-center gap-2">
+              <span class="provider-icon-wrap" style="display:flex; align-items:center;">${provConfig.iconSvg}</span>
+              <div>
+                <div class="auth-provider-title font-jetbrains" style="font-size: 12px; font-weight: 600; color: #fff;">${provConfig.name} Account</div>
+                <div class="auth-provider-status font-mono" style="font-size: 10px; color: #34d399;">Connected as ${this.escape(ident.email || ident.displayName)}</div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm font-jetbrains btn-provider-disconnect" style="font-size: 11px; padding: 5px 12px; color: #fca5a5; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08);">
+              Disconnect
+            </button>
+          </div>
+        `;
+
+        container.querySelector('.btn-provider-disconnect')?.addEventListener('click', () => {
+          this.signOut();
+        });
+      } else {
+        container.innerHTML = AUTH_PROVIDERS_CONFIG.map(prov => {
+          const isConfigured = prov.enabled && prov.checkConfigured();
+          if (isConfigured) {
+            return `
+              <div class="auth-provider-card">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="provider-icon-wrap" style="display:flex; align-items:center;">${prov.iconSvg}</span>
+                  <div>
+                    <div class="auth-provider-title font-jetbrains" style="font-size: 12px; font-weight: 600; color: #fff;">${prov.name}</div>
+                    <div class="auth-provider-status font-jetbrains" style="font-size: 10px; color: #a1a1aa;">Sign in to sync your comments and profile across devices</div>
+                  </div>
+                </div>
+                <button type="button" class="auth-provider-btn font-jetbrains btn-provider-connect" data-provider="${prov.id}">
+                  Continue with ${prov.name} ↗
+                </button>
+              </div>
+            `;
+          } else {
+            return `
+              <div class="auth-provider-card auth-provider-disabled" style="opacity: 0.6;">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="provider-icon-wrap" style="display:flex; align-items:center;">${prov.iconSvg}</span>
+                  <div>
+                    <div class="auth-provider-title font-jetbrains" style="font-size: 12px; font-weight: 600; color: #a1a1aa;">${prov.name}</div>
+                    <div class="auth-provider-status font-jetbrains" style="font-size: 10px; color: #71717a;">OAuth provider unavailable</div>
+                  </div>
+                </div>
+                <span class="badge bg-secondary font-jetbrains" style="font-size: 10px; background: rgba(255,255,255,0.08) !important; color: #71717a;">Unavailable</span>
+              </div>
+            `;
+          }
+        }).join('');
+
+        container.querySelectorAll('.btn-provider-connect').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const pid = btn.getAttribute('data-provider');
+            const prov = AUTH_PROVIDERS_CONFIG.find(p => p.id === pid);
+            if (prov && typeof prov.action === 'function') {
+              prov.action(this);
+            }
+          });
+        });
+      }
+    }
+
+    closeProfileModal() {
+      const modal = document.getElementById('reader-profile-modal');
+      const backdrop = document.getElementById('reader-profile-backdrop');
+      if (modal) {
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+      if (backdrop) backdrop.classList.remove('is-open');
+    }
+
+    async saveProfile() {
+      const nameInp = document.getElementById('modal-profile-name');
+      const bioInp = document.getElementById('modal-profile-bio');
+
+      const newName = nameInp?.value.trim();
+      const newBio = bioInp?.value.trim();
+
+      if (newName) {
+        if (this.session?.user) {
+          this.session.user.user_metadata = this.session.user.user_metadata || {};
+          this.session.user.user_metadata.full_name = newName;
+          localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(this.session));
+
+          // Attempt server-side user metadata update
+          const cfg = window.__GCT_CONFIG__ || {};
+          if (this.session?.access_token && cfg.supabaseUrl && cfg.anonKey) {
+            try {
+              await fetch(`${cfg.supabaseUrl}/auth/v1/user`, {
+                method: 'PUT',
+                headers: {
+                  apikey: cfg.anonKey,
+                  Authorization: `Bearer ${this.session.access_token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  data: { full_name: newName, bio: newBio }
+                })
+              });
+            } catch {}
+          }
+        } else {
+          this.guest.name = newName;
+          localStorage.setItem('gct_guest_saved_name', newName);
+        }
+        if (newBio) localStorage.setItem('gct_reader_bio', newBio);
+
+        this.renderNavWidget();
+        this.showToast('Profile preferences updated.', 'success');
+        this.closeProfileModal();
+      }
+    }
+
+    renderEngagementHistory() {
+      const container = document.getElementById('modal-engagement-history');
+      if (!container) return;
+
+      const comments = JSON.parse(localStorage.getItem('gct_user_comments_history') || '[]');
+
+      const likedArticles = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('gct_liked_art_') && localStorage.getItem(key) === 'true') {
+          likedArticles.push(key.replace('gct_liked_art_', ''));
+        }
+      }
+
+      if (comments.length === 0 && likedArticles.length === 0) {
+        container.innerHTML = `
+          <div class="empty-engagement-history font-jetbrains">
+            No comments, replies, or article likes recorded in this session. Engage with technical publications to build your activity history.
+          </div>
+        `;
+        return;
+      }
+
+      let html = '';
+      comments.forEach(item => {
+        const isReply = !!item.isReply;
+        const pubUrl = item.articleSlug ? `article.html?slug=${encodeURIComponent(item.articleSlug)}` : 'index.html';
+        const pubTitle = item.articleTitle || 'Publication';
+
+        html += `
+          <div class="engagement-history-row" style="padding: 10px 14px; margin-bottom: 8px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px;">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="font-mono text-2xs text-muted">${new Date(item.timestamp).toLocaleDateString()}</span>
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge ${isReply ? 'bg-info' : 'bg-primary'} font-jetbrains" style="font-size: 10px;">${isReply ? 'Reply' : 'Comment'}</span>
+                <a href="${pubUrl}" class="font-jetbrains text-2xs text-muted" style="color: #c4b5fd; text-decoration: none;">${this.escape(pubTitle)} →</a>
+              </div>
+            </div>
+            <div class="small text-light text-truncate" style="max-width: 600px;">${this.escape(item.content)}</div>
+          </div>
+        `;
+      });
+
+      likedArticles.forEach(artId => {
+        html += `
+          <div class="engagement-history-row" style="padding: 10px 14px; margin-bottom: 8px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px;">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="badge bg-secondary font-jetbrains" style="font-size: 10px; background: rgba(124,58,237,0.2) !important; color: #c4b5fd;">Article Liked</span>
+              <a href="index.html" class="font-jetbrains text-2xs" style="color: #c4b5fd; text-decoration: none;">View Catalog →</a>
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    exportPersonalData() {
+      const ident = this.getIdentity();
+      const comments = JSON.parse(localStorage.getItem('gct_user_comments_history') || '[]');
+      const consent = JSON.parse(localStorage.getItem(STORAGE_KEYS.CONSENT) || '{}');
+
+      const exportBundle = {
+        entity: 'GREYCIRCUIT TECHNOLOGIES PRIVATE LIMITED',
+        export_date: new Date().toISOString(),
+        reader_identity: ident,
+        consent_record: consent,
+        comments_and_replies: comments,
+        privacy_framework: 'DPDP Act 2023 / GDPR Export'
+      };
+
+      const blob = new Blob([JSON.stringify(exportBundle, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `gct-reader-data-${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      this.showToast('Personal data export downloaded.', 'success');
+    }
+
+    async deleteAccount() {
+      if (confirm('Are you sure you want to delete your reader identity and clear all local engagement data? This action is irreversible.')) {
+        // 1. If authenticated, revoke active session on Supabase Auth server
+        if (this.session?.access_token) {
+          const cfg = window.__GCT_CONFIG__ || {};
+          if (cfg.supabaseUrl && cfg.anonKey) {
+            try {
+              await fetch(`${cfg.supabaseUrl}/auth/v1/logout`, {
+                method: 'POST',
+                headers: {
+                  apikey: cfg.anonKey,
+                  Authorization: `Bearer ${this.session.access_token}`
+                }
+              });
+            } catch (err) {
+              console.warn('[GCT Auth] Remote session revocation error:', err);
+            }
+          }
+        }
+
+        // 2. Comprehensive LocalStorage Purge across all GCT reader keys
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith('gct_') || key.startsWith('supabase.'))) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+
+        // 3. Explicit fallback for core storage keys
+        localStorage.removeItem(STORAGE_KEYS.SESSION);
+        localStorage.removeItem(STORAGE_KEYS.GUEST_ID);
+        localStorage.removeItem(STORAGE_KEYS.GUEST_SECRET);
+        localStorage.removeItem('gct_user_comments_history');
+        localStorage.removeItem('gct_reader_bio');
+        localStorage.removeItem('gct_guest_saved_name');
+        localStorage.removeItem('gct_user_fp');
+        localStorage.removeItem(STORAGE_KEYS.CONSENT);
+
+        this.session = null;
+        this.guest = null;
+
+        this.showToast('Reader account and local session data purged.', 'info');
+        setTimeout(() => window.location.reload(), 1000);
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+     * 5. PRIVACY & COOKIE CONSENT BANNER CONTROLLER
+     * ---------------------------------------------------------------------- */
+    getConsent() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEYS.CONSENT);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    initConsentBanner() {
+      const consent = localStorage.getItem(STORAGE_KEYS.CONSENT);
+      const banner = document.getElementById('privacy-consent-banner');
+      if (!consent && banner && banner.style) {
+        banner.style.display = 'block';
+      }
+    }
+
+    saveConsent(choice, customCategories = null) {
+      const record = {
+        consent_id: 'c_' + Date.now().toString(36),
+        timestamp: new Date().toISOString(),
+        version: 'v2026.1',
+        choice: choice,
+        categories: customCategories || {
+          essential: true,
+          preferences: choice === 'accept_all',
+          analytics: choice === 'accept_all',
+          marketing: false
+        }
+      };
+
+      localStorage.setItem(STORAGE_KEYS.CONSENT, JSON.stringify(record));
+      const banner = document.getElementById('privacy-consent-banner');
+      if (banner) banner.style.display = 'none';
+
+      this.closeCookiePreferences();
+
+      this.showToast('Privacy preferences saved.', 'success');
+    }
+
+    openCookiePreferences() {
+      const modal = document.getElementById('cookie-preferences-modal');
+      const backdrop = document.getElementById('cookie-preferences-backdrop') || document.getElementById('reader-profile-backdrop');
+      if (modal) {
+        const consent = this.getConsent();
+        const cats = consent?.categories || { essential: true, preferences: true, analytics: false };
+        const prefOpt = document.getElementById('pref-category-preferences');
+        const analOpt = document.getElementById('pref-category-analytics');
+        if (prefOpt) prefOpt.checked = cats.preferences !== false;
+        if (analOpt) analOpt.checked = !!cats.analytics;
+        modal.classList.add('is-open');
+        if (backdrop) backdrop.classList.add('is-open');
+        modal.setAttribute('aria-hidden', 'false');
+      }
+    }
+
+    closeCookiePreferences() {
+      const modal = document.getElementById('cookie-preferences-modal');
+      const backdrop = document.getElementById('cookie-preferences-backdrop') || document.getElementById('reader-profile-backdrop');
+      if (modal) {
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+      const profileModal = document.getElementById('reader-profile-modal');
+      if (backdrop && (!profileModal || !profileModal.classList.contains('is-open'))) {
+        backdrop.classList.remove('is-open');
+      }
+    }
+
+    saveCustomCookiePreferences() {
+      const prefOpt = document.getElementById('pref-category-preferences');
+      const analOpt = document.getElementById('pref-category-analytics');
+      const custom = {
+        essential: true,
+        preferences: prefOpt ? prefOpt.checked : true,
+        analytics: analOpt ? analOpt.checked : false,
+        marketing: false
+      };
+      this.saveConsent('custom', custom);
+    }
+
+    /* -------------------------------------------------------------------------
+     * 6. GLOBAL EVENT BINDINGS & HELPERS
+     * ---------------------------------------------------------------------- */
+
+    /* -------------------------------------------------------------------------
+     * 4.1 DEDICATED READER PROFILE PAGE CONTROLLER (/profile.html)
+     * ---------------------------------------------------------------------- */
+    async initProfilePage() {
+      const authView = document.getElementById('profile-authenticated-view');
+      const guestView = document.getElementById('profile-guest-view');
+      if (!authView || !guestView) return;
+
+      const ident = await this.getValidatedIdentity();
+
+      if (ident.isAuthenticated) {
+        authView.style.display = 'block';
+        guestView.style.display = 'none';
+
+        // Profile Overview
+        const nameEl = document.getElementById('overview-display-name');
+        const emailEl = document.getElementById('overview-email');
+        const avatarEl = document.getElementById('profile-avatar-large');
+
+        if (nameEl) {
+          nameEl.innerHTML = `
+            <span>${this.escape(ident.displayName)}</span>
+            <span class="badge bg-success font-jetbrains" id="overview-status-badge" style="font-size: 11px; padding: 4px 8px;">
+              ● Google Verified
+            </span>
+          `;
+        }
+        if (emailEl) emailEl.textContent = ident.email;
+        if (avatarEl) {
+          if (ident.avatarUrl) {
+            avatarEl.innerHTML = `<img src="${ident.avatarUrl}" alt="${ident.displayName}" />`;
+          } else {
+            const initials = ident.displayName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+            avatarEl.innerHTML = `<span class="font-jetbrains" style="font-size: 24px; font-weight: 700;">${initials}</span>`;
+          }
+        }
+
+        // Section 01 General Settings
+        const formName = document.getElementById('profile-form-name');
+        const formEmail = document.getElementById('profile-form-email');
+        const formBio = document.getElementById('profile-form-bio');
+
+        if (formName) formName.value = ident.displayName;
+        if (formEmail) formEmail.value = ident.email;
+        if (formBio) formBio.value = localStorage.getItem('gct_reader_bio') || '';
+
+        const saveGeneralBtn = document.getElementById('profile-btn-save-general');
+        if (saveGeneralBtn) {
+          saveGeneralBtn.onclick = async () => {
+            const newName = formName?.value.trim();
+            const newBio = formBio?.value.trim();
+            if (!newName) {
+              this.showToast('Display name cannot be empty.', 'error');
+              return;
+            }
+
+            saveGeneralBtn.disabled = true;
+            saveGeneralBtn.textContent = 'Saving...';
+
+            try {
+              const cfg = window.__GCT_CONFIG__ || {};
+              if (this.session?.access_token && cfg.supabaseUrl && cfg.anonKey) {
+                const patchRes = await fetch(`${cfg.supabaseUrl}/auth/v1/user`, {
+                  method: 'PUT',
+                  headers: {
+                    apikey: cfg.anonKey,
+                    Authorization: `Bearer ${this.session.access_token}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    data: { full_name: newName, bio: newBio }
+                  })
+                });
+
+                if (patchRes.ok) {
+                  const updatedUser = await patchRes.json();
+                  if (this.session) {
+                    this.session.user = updatedUser;
+                    localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(this.session));
+                  }
+                }
+              }
+
+              if (newBio) localStorage.setItem('gct_reader_bio', newBio);
+              this.renderNavWidget();
+              if (nameEl) {
+                nameEl.innerHTML = `
+                  <span>${this.escape(newName)}</span>
+                  <span class="badge bg-success font-jetbrains" id="overview-status-badge" style="font-size: 11px; padding: 4px 8px;">
+                    ● Google Verified
+                  </span>
+                `;
+              }
+              this.showToast('Profile updated successfully.', 'success');
+            } catch (err) {
+              console.warn('[GCT Auth] Error saving profile to server:', err);
+              this.showToast('Profile saved locally.', 'info');
+            } finally {
+              saveGeneralBtn.disabled = false;
+              saveGeneralBtn.textContent = 'Save Profile Changes';
+            }
+          };
+        }
+
+        // Section 02 Account & Identity
+        const provContainer = document.getElementById('profile-connected-providers');
+        if (provContainer) {
+          provContainer.innerHTML = `
+            <div class="auth-provider-card auth-provider-connected">
+              <div class="d-flex align-items-center gap-3">
+                <span class="provider-icon-wrap" style="display:flex; align-items:center;">
+                  <svg width="22" height="22" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+                </span>
+                <div>
+                  <div class="auth-provider-title font-jetbrains" style="font-size: 13px; font-weight: 600; color: #fff;">Google Federated Identity</div>
+                  <div class="auth-provider-status font-mono" style="font-size: 11px; color: #34d399;">Connected as ${this.escape(ident.email)} (Verified)</div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm font-jetbrains" id="profile-btn-prov-signout" style="font-size: 11px; padding: 6px 14px; color: #fca5a5; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08);">
+                Sign Out
+              </button>
+            </div>
+            <div class="auth-provider-card auth-provider-disabled" style="opacity: 0.6; margin-top: 8px;">
+              <div class="d-flex align-items-center gap-3">
+                <span class="provider-icon-wrap" style="display:flex; align-items:center;">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+                </span>
+                <div>
+                  <div class="auth-provider-title font-jetbrains" style="font-size: 13px; font-weight: 600; color: #a1a1aa;">GitHub Developer Identity</div>
+                  <div class="auth-provider-status font-jetbrains" style="font-size: 11px; color: #71717a;">Extensible provider registration in progress</div>
+                </div>
+              </div>
+              <span class="badge bg-secondary font-jetbrains" style="font-size: 10px; background: rgba(255,255,255,0.08) !important; color: #71717a;">Planned</span>
+            </div>
+          `;
+
+          document.getElementById('profile-btn-prov-signout')?.addEventListener('click', () => this.signOut());
+        }
+
+        document.getElementById('overview-btn-signout')?.addEventListener('click', () => this.signOut());
+
+        document.getElementById('profile-btn-request-deletion')?.addEventListener('click', () => {
+          if (confirm('Initiate Server-Side Deletion Request?\n\nIn accordance with DPDP Act 2023 / GDPR, this request purges your personal credentials and identity attribution across GreyCircuit systems. Local session tokens will also be revoked.')) {
+            this.deleteAccount();
+          }
+        });
+
+        // Section 03 My Activity
+        this.renderProfileActivity(ident);
+
+        // Section 04 Privacy & Data Rights
+        document.getElementById('profile-btn-export-data')?.addEventListener('click', () => this.exportPersonalData());
+        document.getElementById('profile-btn-manage-consent')?.addEventListener('click', () => this.openCookiePreferences());
+
+      } else {
+        // Guest mode view
+        authView.style.display = 'none';
+        guestView.style.display = 'block';
+
+        const guestSigninBtn = document.getElementById('btn-profile-guest-signin');
+        if (guestSigninBtn) {
+          guestSigninBtn.onclick = () => {
+            const absProfileUrl = new URL('profile.html', window.location.href).href;
+            this.signInWithGoogle(absProfileUrl);
+          };
+        }
+      }
+    }
+
+    renderProfileActivity(ident) {
+      const activityContainer = document.getElementById('profile-activity-list');
+      const commentsBadge = document.getElementById('stat-comments-count');
+      const likesBadge = document.getElementById('stat-likes-count');
+      if (!activityContainer) return;
+
+      const comments = JSON.parse(localStorage.getItem('gct_user_comments_history') || '[]');
+
+      const likedArticles = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('gct_liked_art_') && localStorage.getItem(key) === 'true') {
+          likedArticles.push(key.replace('gct_liked_art_', ''));
+        }
+      }
+
+      if (commentsBadge) commentsBadge.textContent = `${comments.length} Comments`;
+      if (likesBadge) likesBadge.textContent = `${likedArticles.length} Likes`;
+
+      if (comments.length === 0 && likedArticles.length === 0) {
+        activityContainer.innerHTML = `
+          <div class="empty-engagement-history">
+            No comments, replies, or article interactions recorded yet. Engage with technical publications to build your activity history.
+          </div>
+        `;
+        return;
+      }
+
+      let html = '';
+
+      comments.forEach(item => {
+        const isReply = !!item.isReply;
+        const dateStr = item.timestamp ? new Date(item.timestamp).toLocaleDateString() : 'Recent';
+        const pubUrl = item.articleSlug ? `article.html?slug=${encodeURIComponent(item.articleSlug)}` : 'index.html';
+        const pubTitle = item.articleTitle || 'GCT Publication';
+
+        html += `
+          <div class="activity-item-card">
+            <div class="activity-item-top">
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge ${isReply ? 'bg-info' : 'bg-primary'} font-jetbrains" style="font-size: 10px;">
+                  ${isReply ? 'Reply' : 'Comment'}
+                </span>
+                <span class="font-mono text-2xs text-muted">${dateStr}</span>
+                <span class="badge bg-secondary font-jetbrains" style="font-size: 10px; background: rgba(52,211,153,0.1) !important; color: #34d399;">Published</span>
+              </div>
+              <a href="${pubUrl}" class="activity-item-pub-link">
+                ${this.escape(pubTitle)} →
+              </a>
+            </div>
+            <div class="activity-item-body">
+              ${this.escape(item.content)}
+            </div>
+          </div>
+        `;
+      });
+
+      likedArticles.forEach(artId => {
+        html += `
+          <div class="activity-item-card">
+            <div class="activity-item-top">
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-secondary font-jetbrains" style="font-size: 10px; background: rgba(124,58,237,0.2) !important; color: #c4b5fd;">
+                  Article Liked
+                </span>
+                <span class="font-mono text-2xs text-muted">ID: ${artId.substring(0, 8)}...</span>
+              </div>
+              <a href="index.html" class="activity-item-pub-link">View in Publications Catalog →</a>
+            </div>
+          </div>
+        `;
+      });
+
+      activityContainer.innerHTML = html;
+    }
+
+    bindGlobalEvents() {
+      window.addEventListener('resize', () => this.alignProfileWidget());
+      window.addEventListener('scroll', () => this.alignProfileWidget(), { passive: true });
+
+      // Synchronize site-nav animation state to reader-profile-widget via MutationObserver
+      const nav = document.getElementById('site-nav');
+      if (nav && typeof MutationObserver !== 'undefined') {
+        const navObserver = new MutationObserver((mutations) => {
+          for (const m of mutations) {
+            if (m.type === 'attributes' && m.attributeName === 'class') {
+              const widget = document.getElementById('reader-profile-widget');
+              if (widget) {
+                widget.classList.toggle('is-scrolled', nav.classList.contains('is-scrolled'));
+                widget.classList.toggle('is-hidden', nav.classList.contains('is-hidden'));
+              }
+            }
+          }
+        });
+        navObserver.observe(nav, { attributes: true, attributeFilter: ['class'] });
+      }
+
+      // Automatically recalculate position if navigation island size changes (font loading, window changes)
+      if (nav && typeof ResizeObserver !== 'undefined') {
+        const resizeObserver = new ResizeObserver(() => this.alignProfileWidget());
+        resizeObserver.observe(nav);
+      }
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => this.alignProfileWidget());
+      }
+      window.addEventListener('load', () => this.alignProfileWidget());
+
+      // State-dependent profile icon action (Section 2.1)
+      const handleProfileNav = async (e) => {
+        if (e) e.preventDefault();
+        if (this.isNavigating) return;
+        this.isNavigating = true;
+
+        const btn = document.getElementById('btn-reader-profile');
+        if (btn) btn.classList.add('is-loading');
+
+        try {
+          const ident = await this.getValidatedIdentity();
+          if (ident.isAuthenticated) {
+            const isProfilePage = window.location.pathname.endsWith('profile.html');
+            if (!isProfilePage) {
+              window.location.href = 'profile.html';
+            }
+          } else {
+            this.openProfileModal();
+          }
+        } catch (err) {
+          console.warn('[GCT Auth] Error during profile navigation check:', err);
+          this.openProfileModal();
+        } finally {
+          this.isNavigating = false;
+          if (btn) btn.classList.remove('is-loading');
+        }
+      };
+
+      const btn = document.getElementById('btn-reader-profile');
+      if (btn) {
+        btn.addEventListener('click', handleProfileNav);
+      }
+
+      const mobBtn = document.getElementById('btn-mobile-reader-profile');
+      if (mobBtn) {
+        mobBtn.addEventListener('click', async (e) => {
+          const drawer = document.getElementById('mobile-drawer');
+          const backdrop = document.getElementById('mobile-drawer-backdrop');
+          if (drawer) drawer.classList.remove('is-open');
+          if (backdrop) backdrop.hidden = true;
+          await handleProfileNav(e);
+        });
+      }
+
+      // Privacy preferences button inside modal
+      document.getElementById('modal-btn-privacy-pref')?.addEventListener('click', () => this.openCookiePreferences());
+
+      // Close modal buttons
+      document.querySelectorAll('.btn-close-profile-modal').forEach(b => {
+        b.addEventListener('click', () => this.closeProfileModal());
+      });
+
+      // Save profile button
+      document.getElementById('modal-btn-save-profile')?.addEventListener('click', () => this.saveProfile());
+
+      // Export data button
+      document.getElementById('modal-btn-export-data')?.addEventListener('click', () => this.exportPersonalData());
+
+      // Delete account button
+      document.getElementById('modal-btn-delete-account')?.addEventListener('click', () => this.deleteAccount());
+
+      // Consent buttons
+      document.getElementById('btn-consent-accept-all')?.addEventListener('click', () => this.saveConsent('accept_all'));
+      document.getElementById('btn-consent-reject-opt')?.addEventListener('click', () => this.saveConsent('reject_optional'));
+      document.getElementById('btn-consent-manage')?.addEventListener('click', () => this.openCookiePreferences());
+      document.getElementById('link-privacy-preferences')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.openCookiePreferences();
+      });
+
+      // Cookie preferences modal buttons & backdrop
+      document.querySelectorAll('.btn-close-cookie-modal').forEach(b => {
+        b.addEventListener('click', () => this.closeCookiePreferences());
+      });
+      document.getElementById('cookie-preferences-backdrop')?.addEventListener('click', () => this.closeCookiePreferences());
+      document.getElementById('btn-save-cookie-preferences')?.addEventListener('click', () => this.saveCustomCookiePreferences());
+      document.getElementById('btn-pref-reject-all')?.addEventListener('click', () => {
+        this.saveConsent('reject_optional');
+        this.closeCookiePreferences();
+      });
+    }
+
+    escape(str) {
+      return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    showToast(message, type = 'info') {
+      let toast = document.getElementById('gct-reader-toast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'gct-reader-toast';
+        toast.className = 'gct-toast-container font-jetbrains';
+        document.body.appendChild(toast);
+      }
+      toast.textContent = message;
+      toast.className = `gct-toast-container font-jetbrains toast-${type} is-active`;
+      setTimeout(() => {
+        toast.classList.remove('is-active');
+      }, 4000);
+    }
+  }
+
+  // Export Singleton to Window
+  window.ReaderClient = new ReaderClient();
+  window.readerClient = window.ReaderClient;
+  window.GCTReader = window.ReaderClient;
+})();

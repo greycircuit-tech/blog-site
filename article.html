@@ -72,6 +72,33 @@
       overflow: hidden;
     }
 
+    .article-header-bg {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center 35%;
+      background-repeat: no-repeat;
+      opacity: 0;
+      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      transform: scale(1.03);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .article-header-bg.is-loaded {
+      opacity: 0.22;
+      transform: scale(1);
+    }
+
+    .article-header-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(8, 9, 13, 0.70) 0%, rgba(8, 9, 13, 0.88) 60%, rgba(8, 9, 13, 0.98) 100%),
+                  radial-gradient(circle at 50% 30%, transparent 15%, rgba(8, 9, 13, 0.80) 85%);
+      z-index: 1;
+      pointer-events: none;
+    }
+
     .breadcrumbs {
       display: flex;
       align-items: center;
@@ -272,6 +299,93 @@
       stroke: #ef4444;
     }
 
+    /* Non-interactive Engagement Indicators */
+    .engagement-indicators {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 4px;
+      user-select: none;
+    }
+
+    .engagement-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted, #71717a);
+      line-height: 1;
+      pointer-events: none; /* strictly informational */
+    }
+
+    .engagement-indicator svg {
+      color: var(--text-muted, #71717a);
+      opacity: 0.85;
+      flex-shrink: 0;
+    }
+
+    /* Expandable Circular Write a Comment Control */
+    .btn-write-comment {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 34px;
+      width: 34px;
+      border-radius: 9999px;
+      background: transparent;
+      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+      color: var(--text-secondary, #a1a1aa);
+      cursor: pointer;
+      padding: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  padding 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  background 0.2s ease,
+                  border-color 0.2s ease,
+                  color 0.2s ease;
+      vertical-align: middle;
+      text-decoration: none;
+      box-sizing: border-box;
+    }
+
+    .btn-write-comment .plus-icon {
+      flex-shrink: 0;
+      transition: transform 0.25s ease;
+    }
+
+    .btn-write-comment .write-comment-label {
+      max-width: 0;
+      opacity: 0;
+      overflow: hidden;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      transition: max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 0.2s ease,
+                  margin 0.3s ease;
+      pointer-events: none;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .btn-write-comment:hover {
+        width: 155px;
+        padding: 0 14px 0 10px;
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.3);
+        color: #ffffff;
+      }
+
+      .btn-write-comment:hover .plus-icon {
+        transform: rotate(90deg);
+      }
+
+      .btn-write-comment:hover .write-comment-label {
+        max-width: 110px;
+        opacity: 1;
+        margin-left: 6px;
+      }
+    }
+
     .share-label {
       font-family: "JetBrains Mono", monospace;
       font-size: 11px;
@@ -379,18 +493,35 @@
       color: var(--text-muted);
     }
 
-    /* Comments Section */
+    /* 01 // ARTICLE COMMENTS - Translucent & Diffused Editorial Surface */
     .comments-section {
-      margin-top: 4rem;
-      padding-top: 3rem;
-      border-top: 1px solid var(--border-subtle);
+      margin-top: 3.5rem;
+      padding: 2.25rem;
+      background: rgba(14, 16, 22, 0.45);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+      position: relative;
+    }
+
+    .comments-section::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+      pointer-events: none;
     }
 
     .comments-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 1.75rem;
+      margin-bottom: 2rem;
     }
 
     .comments-title {
@@ -398,15 +529,24 @@
       font-size: 12px;
       letter-spacing: 0.14em;
       text-transform: uppercase;
-      color: var(--accent-violet);
+      color: var(--accent-violet, #c4b5fd);
     }
 
+    /* Comment Form Surface */
     .comment-form-panel {
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid var(--border-subtle);
+      background: rgba(20, 22, 30, 0.35);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
       border-radius: 12px;
       padding: 1.75rem;
-      margin-bottom: 2.5rem;
+      margin-bottom: 2.25rem;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .comment-form-panel.highlight-pulse {
+      border-color: rgba(124, 58, 237, 0.6);
+      box-shadow: 0 0 24px rgba(124, 58, 237, 0.25);
     }
 
     .comment-form-grid {
@@ -416,42 +556,54 @@
       margin-bottom: 1.25rem;
     }
 
+    @media (max-width: 640px) {
+      .comment-form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .form-group label {
       display: block;
       font-family: "JetBrains Mono", monospace;
       font-size: 11px;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: var(--text-secondary);
+      color: var(--text-secondary, #a1a1aa);
       margin-bottom: 6px;
     }
 
     .form-input, .form-textarea {
       width: 100%;
-      background: #000000;
-      border: 1px solid var(--border-subtle);
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 8px;
       padding: 10px 14px;
       color: #ffffff;
       font-family: "Inter", sans-serif;
       font-size: 14px;
       outline: none;
-      transition: border-color 0.2s ease;
+      transition: border-color 0.2s ease, background 0.2s ease;
       box-sizing: border-box;
     }
 
     .form-input:focus, .form-textarea:focus {
-      border-color: rgba(255, 255, 255, 0.4);
+      border-color: rgba(255, 255, 255, 0.35);
+      background: rgba(0, 0, 0, 0.65);
+    }
+
+    .form-input-sm, .form-textarea-sm {
+      padding: 8px 12px;
+      font-size: 13px;
     }
 
     .comment-moderation-note {
       font-family: "JetBrains Mono", monospace;
       font-size: 11px;
-      color: var(--text-muted);
+      color: var(--text-muted, #71717a);
       line-height: 1.5;
-      margin-top: 1rem;
     }
 
+    /* Comment List */
     .comment-list {
       display: flex;
       flex-direction: column;
@@ -459,10 +611,31 @@
     }
 
     .comment-item {
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid var(--border-subtle);
-      border-radius: 10px;
+      background: rgba(22, 25, 34, 0.35);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 12px;
       padding: 1.25rem 1.5rem;
+      transition: border-color 0.2s ease, background 0.2s ease;
+      position: relative;
+    }
+
+    .comment-item:hover {
+      background: rgba(26, 30, 42, 0.45);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .comment-main-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .comment-body-col {
+      flex: 1;
+      min-width: 0;
     }
 
     .comment-author-bar {
@@ -470,19 +643,14 @@
       align-items: center;
       gap: 10px;
       margin-bottom: 8px;
+      flex-wrap: wrap;
     }
 
-    .comment-avatar {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.1);
-      display: grid;
-      place-items: center;
-      font-family: "JetBrains Mono", monospace;
-      font-size: 10px;
-      font-weight: 700;
-      color: #ffffff;
+    .comment-identicon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      flex-shrink: 0;
     }
 
     .comment-name {
@@ -494,25 +662,169 @@
     .comment-date {
       font-family: "JetBrains Mono", monospace;
       font-size: 11px;
-      color: var(--text-muted);
+      color: var(--text-muted, #71717a);
     }
 
     .comment-text {
       font-size: 13.5px;
       line-height: 1.6;
-      color: var(--text-secondary);
+      color: var(--text-secondary, #d4d4d8);
       margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .comment-footer-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 10px;
+    }
+
+    .btn-reply-action {
+      background: transparent;
+      border: none;
+      padding: 0;
+      color: var(--text-muted, #71717a);
+      font-size: 11px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: color 0.2s ease;
+    }
+
+    .btn-reply-action:hover {
+      color: var(--accent-cyan, #38bdf8);
+    }
+
+    /* Right-aligned Comment Like Control */
+    .comment-like-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .comment-like-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 4px 6px;
+      color: var(--text-muted, #71717a);
+      transition: color 0.2s ease, transform 0.2s ease;
+      border-radius: 6px;
+    }
+
+    .comment-like-btn svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      fill: none;
+      transition: transform 0.2s ease;
+    }
+
+    .comment-like-btn:hover svg {
+      transform: scale(1.15);
+      color: #ffffff;
+    }
+
+    .comment-like-btn.liked {
+      color: #f87171;
+    }
+
+    .comment-like-btn.liked svg {
+      fill: #ef4444;
+      stroke: #ef4444;
+    }
+
+    .comment-like-count {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      font-weight: 600;
+      margin-top: 2px;
+      line-height: 1;
+    }
+
+    /* Threaded Replies */
+    .comment-replies-list {
+      margin-top: 1rem;
+      margin-left: 1.25rem;
+      padding-left: 1.25rem;
+      border-left: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 0.875rem;
+    }
+
+    .comment-reply-item {
+      background: rgba(18, 20, 28, 0.3);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.035);
+      border-radius: 10px;
+      padding: 0.875rem 1.125rem;
+      transition: background 0.2s ease;
+    }
+
+    .comment-reply-item:hover {
+      background: rgba(22, 25, 34, 0.4);
+    }
+
+    /* Reply Editor Form */
+    .reply-editor-panel {
+      margin-top: 1rem;
+      margin-left: 1.25rem;
+      padding: 1.25rem;
+      background: rgba(18, 20, 28, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .reply-form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    /* Progressive Load / View More Comments */
+    .btn-view-more-comments {
+      width: 100%;
+      padding: 12px 18px;
+      margin-top: 1.5rem;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      color: var(--text-secondary, #d4d4d8);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    }
+
+    .btn-view-more-comments:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.2);
+      color: #ffffff;
     }
 
     .comment-empty-message {
       padding: 2.5rem 1.5rem;
       text-align: center;
       background: rgba(255, 255, 255, 0.015);
-      border: 1px dashed var(--border-subtle);
+      border: 1px dashed rgba(255, 255, 255, 0.08);
       border-radius: 10px;
-      color: var(--text-muted);
+      color: var(--text-muted, #71717a);
       font-family: "JetBrains Mono", monospace;
       font-size: 12px;
+      line-height: 1.6;
     }
 
     .comment-success-alert {
@@ -668,8 +980,6 @@
 <body class="selection-invert">
   <a href="#main-content" class="skip-link">Skip to main content</a>
   <div class="noise-overlay" aria-hidden="true"></div>
-  <div id="cursor-dot" aria-hidden="true"></div>
-  <div id="cursor-ring" aria-hidden="true"></div>
 
   <!-- Primary Navigation (Dynamic Island + Mobile Slide-Out Drawer) -->
   <header>
@@ -700,8 +1010,6 @@
           </div>
 
           <a href="https://greycircuit.tech/projects/project.html" class="island-link magnetic" data-magnetic>Projects</a>
-          <a href="https://greycircuit.tech#industries" class="island-link magnetic" data-magnetic>Industries</a>
-          <a href="https://greycircuit.tech#approach" class="island-link magnetic" data-magnetic>Approach</a>
           <a href="https://blog.greycircuit.tech" class="island-link magnetic is-active-section" data-magnetic>Blog</a>
         </div>
 
@@ -714,6 +1022,22 @@
         </button>
       </div>
     </nav>
+
+    <!-- Reader Profile Stationary Avatar & Right-Expanding Greeting Capsule -->
+    <div class="reader-profile-widget" id="reader-profile-widget" aria-label="Reader Profile & Settings">
+      <button type="button" class="profile-capsule-btn" id="btn-reader-profile" aria-expanded="false" aria-haspopup="dialog" title="Reader Profile & Preferences">
+        <div class="profile-avatar-wrap" id="profile-avatar-wrap">
+          <svg class="profile-avatar-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </div>
+        <div class="profile-greeting-shelf" id="profile-greeting-shelf" aria-hidden="true">
+          <span class="greeting-prefix font-mono text-2xs" id="greeting-prefix">Hi,</span>
+          <span class="greeting-name font-jetbrains" id="greeting-name">Guest</span>
+        </div>
+      </button>
+    </div>
 
     <!-- Accessible Mobile Slide-Out Drawer -->
     <div class="mobile-drawer-backdrop" id="mobile-drawer-backdrop" hidden></div>
@@ -733,10 +1057,9 @@
           <a href="https://greycircuit.tech/services/swe-service/software-engineering.html">→ Software Engineering</a>
         </div>
         <a href="https://greycircuit.tech/projects/project.html" class="mobile-drawer-link">04 / Selected Projects</a>
-        <a href="https://greycircuit.tech#industries" class="mobile-drawer-link">05 / Industries</a>
-        <a href="https://greycircuit.tech#approach" class="mobile-drawer-link">06 / Execution Model</a>
-        <a href="https://greycircuit.tech/whitepaper.html" class="mobile-drawer-link">07 / Whitepaper</a>
-        <a href="https://blog.greycircuit.tech" class="mobile-drawer-link active">08 / Blog</a>
+        <a href="https://greycircuit.tech/whitepaper.html" class="mobile-drawer-link">05 / Whitepaper</a>
+        <a href="https://blog.greycircuit.tech" class="mobile-drawer-link active">06 / Blog</a>
+        <button type="button" class="mobile-drawer-link" id="btn-mobile-reader-profile" style="background:none;border:none;width:100%;text-align:left;cursor:pointer;">07 / Reader Profile</button>
         <a href="https://greycircuit.tech#contact" class="mobile-drawer-cta">Start a Conversation ↗</a>
       </nav>
     </aside>
@@ -745,8 +1068,10 @@
   <main id="main-content">
     <!-- Article Header Section -->
     <section class="article-header-section">
+      <div class="article-header-bg" id="article-header-bg" aria-hidden="true"></div>
+      <div class="article-header-overlay" aria-hidden="true"></div>
       <div class="ambient-glow hero-glow" aria-hidden="true"></div>
-      <div class="container" style="max-width: 960px;">
+      <div class="container" style="max-width: 960px; position: relative; z-index: 2;">
         <div class="breadcrumbs font-mono uppercase tracking-widest">
           <a href="https://greycircuit.tech">Home</a>
           <span style="opacity: 0.3;">/</span>
@@ -812,12 +1137,39 @@
             <!-- Social Share & Engagement Bar -->
             <div class="article-engagement-bar" id="engagement-bar">
               <div class="engagement-left">
+                <!-- 2.1 Like button -->
                 <button type="button" class="btn-like" id="btn-like" aria-label="Like this publication">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                   </svg>
                   <span id="like-text">Like</span>
                   <span id="like-count" style="font-weight: 700; color: #ffffff;">0</span>
+                </button>
+
+                <!-- 2.2 Non-interactive engagement indicators -->
+                <div class="engagement-indicators" aria-label="Engagement statistics">
+                  <span class="engagement-indicator font-jetbrains" title="Approved Comments">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span id="indicator-comment-count">0</span>
+                  </span>
+                  <span class="engagement-indicator font-jetbrains" title="Approved Replies">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="9 17 4 12 9 7"></polyline>
+                      <path d="M20 18v-2a4 4 0 0 0-4-4H4"></path>
+                    </svg>
+                    <span id="indicator-reply-count">0</span>
+                  </span>
+                </div>
+
+                <!-- 2.3 Expandable Write a Comment control -->
+                <button type="button" class="btn-write-comment" id="btn-write-comment" aria-label="Write a comment" title="Write a comment">
+                  <svg class="plus-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  <span class="write-comment-label font-jetbrains">Write a comment</span>
                 </button>
               </div>
 
@@ -873,23 +1225,15 @@
               </div>
             </div>
 
-            <!-- Related Publications Section -->
-            <section class="related-section" id="related-publications-section">
-              <div class="related-title font-mono">01 // RELATED INTELLIGENCE</div>
-              <div class="related-grid" id="related-grid">
-                <!-- Dynamically populated related publications -->
-              </div>
-            </section>
-
-            <!-- Comments Section & Moderation Submission -->
+            <!-- 01 // ARTICLE COMMENTS (Directly below Author Card) -->
             <section class="comments-section" id="comments-section">
               <div class="comments-header">
-                <div class="comments-title font-mono">02 // DISCUSSION &amp; PEER REVIEW</div>
+                <div class="comments-title font-mono">01 // ARTICLE COMMENTS</div>
                 <span id="comments-count-badge" class="font-mono text-2xs uppercase tracking-widest text-grey-400">0 Comments</span>
               </div>
 
-              <!-- Comment Submission Form -->
-              <div class="comment-form-panel">
+              <!-- Comment Submission Form (Hidden by default, revealed via + or Reply) -->
+              <div class="comment-form-panel" id="comment-form-panel" style="display: none;">
                 <form id="comment-form">
                   <!-- Anti-bot honeypot field hidden from legitimate users -->
                   <div style="display: none;" aria-hidden="true">
@@ -914,16 +1258,21 @@
                   </div>
 
                   <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; flex-wrap: wrap; gap: 12px;">
-                    <button type="submit" class="btn btn-primary font-jetbrains" id="btn-submit-comment" style="padding: 10px 24px;">
-                      Submit for Moderation
-                    </button>
-                    <div class="comment-moderation-note">
-                      * All comments are held for editorial moderation prior to publication to maintain high-signal technical discourse.
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                      <button type="submit" class="btn btn-primary font-jetbrains" id="btn-submit-comment" style="padding: 10px 24px;">
+                        POST COMMENT
+                      </button>
+                      <button type="button" class="btn btn-secondary font-jetbrains" id="btn-cancel-comment" style="padding: 10px 18px;">
+                        CANCEL
+                      </button>
+                    </div>
+                    <div class="comment-moderation-note font-jetbrains">
+                      * Comments publish immediately. Please maintain professional technical discourse.
                     </div>
                   </div>
 
-                  <div class="comment-success-alert" id="comment-success-alert">
-                    &check; Thank you. Your contribution has been submitted and queued for editorial moderation.
+                  <div class="comment-success-alert font-jetbrains" id="comment-success-alert" style="display: none;">
+                    &check; Your comment has been published.
                   </div>
                   <div class="comment-error-alert" id="comment-error-alert" style="display: none; padding: 12px 16px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; color: #f87171; font-family: 'JetBrains Mono', monospace; font-size: 12px; margin-top: 1rem;">
                   </div>
@@ -933,6 +1282,14 @@
               <!-- Approved Comments List -->
               <div class="comment-list" id="comment-list">
                 <!-- Dynamically rendered approved comments or empty placeholder -->
+              </div>
+            </section>
+
+            <!-- 02 // RELATED INTELLIGENCE (Publications) -->
+            <section class="related-section" id="related-publications-section">
+              <div class="related-title font-mono">02 // RELATED INTELLIGENCE</div>
+              <div class="related-grid" id="related-grid">
+                <!-- Dynamically populated related publications -->
               </div>
             </section>
 
@@ -1026,13 +1383,240 @@
     </div>
   </footer>
 
+  <!-- Reader Profile Modal -->
+  <div class="reader-modal-backdrop" id="reader-profile-backdrop"></div>
+  <aside class="reader-profile-modal font-inter" id="reader-profile-modal" role="dialog" aria-modal="true" aria-labelledby="modal-profile-title" aria-hidden="true">
+    <div class="reader-modal-header">
+      <div class="d-flex align-items-center gap-2">
+        <span class="font-mono text-2xs uppercase tracking-widest text-muted">READER // CONTROL PLANE</span>
+        <span id="modal-auth-mode-badge" class="badge bg-secondary font-jetbrains" style="font-size: 10px;">Guest Mode</span>
+      </div>
+      <button type="button" class="btn-close-profile-modal" style="background:none; border:none; color:#fff; font-size:20px; cursor:pointer;" aria-label="Close dialog">&times;</button>
+    </div>
+
+    <div class="reader-modal-body">
+      <!-- SECTION 01 — IDENTITY OVERVIEW -->
+      <div class="reader-modal-section no-border" id="modal-sec-overview">
+        <div class="reader-section-header">
+          <span class="reader-section-label">01 // IDENTITY OVERVIEW</span>
+        </div>
+        <div id="modal-guest-notice" class="modal-guest-warning font-jetbrains" style="display: none;">
+          <div class="guest-warning-title">GUEST SESSION ACTIVE</div>
+          <p class="guest-warning-desc">
+            Your pseudonymous guest identity is temporary and tied strictly to this browser session. It does not carry across browsers or devices. Connecting a verified identity provider enables persistent cross-device identity, comments attribution, and authenticated profile control.
+          </p>
+        </div>
+      </div>
+
+      <!-- SECTION 02 — PERSONAL PROFILE -->
+      <div class="reader-modal-section" id="modal-sec-profile">
+        <div class="reader-section-header">
+          <span class="reader-section-label">02 // PERSONAL PROFILE</span>
+        </div>
+        <div class="profile-form-grid">
+          <div class="form-group">
+            <label for="modal-profile-name" class="form-label font-mono text-2xs uppercase tracking-widest text-muted">Display Name</label>
+            <input type="text" id="modal-profile-name" class="form-input" placeholder="e.g. Dr. Jane Doe" maxlength="100" />
+          </div>
+          <div class="form-group">
+            <label for="modal-profile-email" class="form-label font-mono text-2xs uppercase tracking-widest text-muted">Work Email (Confidential)</label>
+            <input type="email" id="modal-profile-email" class="form-input" placeholder="Not provided (session only)" readonly />
+            <div class="font-mono text-2xs text-muted mt-1" style="font-size: 10px; color: #71717a;">* Retained strictly for verification and rate-limiting. Never exposed publicly.</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="modal-profile-bio" class="form-label font-mono text-2xs uppercase tracking-widest text-muted">Short Biography</label>
+          <textarea id="modal-profile-bio" class="form-textarea" rows="2" placeholder="Technical focus or systems research background..." maxlength="250"></textarea>
+        </div>
+      </div>
+
+      <!-- SECTION 03 — ENGAGEMENT HISTORY -->
+      <div class="reader-modal-section" id="modal-sec-engagement">
+        <div class="reader-section-header">
+          <span class="reader-section-label">03 // ENGAGEMENT HISTORY</span>
+        </div>
+        <div id="modal-engagement-history">
+          <!-- Dynamically populated via reader-client.js -->
+        </div>
+      </div>
+
+      <!-- SECTION 04 — DATA RIGHTS & PRIVACY -->
+      <div class="reader-modal-section" id="modal-sec-privacy">
+        <div class="reader-section-header">
+          <span class="reader-section-label">04 // DATA RIGHTS &amp; PRIVACY (DPDP ACT 2023 / GDPR)</span>
+        </div>
+        <p class="font-jetbrains text-muted mb-3" style="font-size: 11px; line-height: 1.5; color: #a1a1aa;">
+          Clearing your guest session purges your pseudonymous tokens and local engagement records immediately from this browser. For authenticated accounts, server-side data deletion requests can be initiated securely.
+        </p>
+        <div class="d-flex flex-wrap gap-2">
+          <button type="button" class="btn btn-secondary btn-sm font-jetbrains" id="modal-btn-export-data" style="font-size: 11px; padding: 6px 14px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: -1px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Export Personal Data
+          </button>
+          <button type="button" class="btn btn-outline-danger btn-sm font-jetbrains" id="modal-btn-delete-account" style="font-size: 11px; padding: 6px 14px; color: #f87171; border-color: rgba(239,68,68,0.4);">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: -1px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            Clear Session / Deletion
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm font-jetbrains" id="modal-btn-privacy-pref" style="font-size: 11px; padding: 6px 14px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: -1px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            Privacy Preferences
+          </button>
+        </div>
+      </div>
+
+      <!-- SECTION 05 — IDENTITY PROVIDERS -->
+      <div class="reader-modal-section" id="modal-sec-providers">
+        <div class="reader-section-header">
+          <span class="reader-section-label">05 // IDENTITY PROVIDERS</span>
+        </div>
+        <p class="text-muted font-jetbrains mb-3" style="font-size: 11px; line-height: 1.45; color: #a1a1aa;">
+          Connect a verified identity provider to maintain persistent authenticated identity, signed comments, and engagement across supported devices.
+        </p>
+        <div id="modal-identity-providers-list" class="d-flex flex-column gap-2">
+          <!-- Populated dynamically via extensible provider registry -->
+        </div>
+      </div>
+    </div>
+
+    <div class="reader-modal-footer">
+      <button type="button" class="btn btn-primary font-jetbrains" id="modal-btn-save-profile">Save Profile</button>
+      <button type="button" class="btn btn-secondary font-jetbrains btn-close-profile-modal">Close</button>
+    </div>
+  </aside>
+
+  <!-- Cookie & Privacy Preferences Modal (DPDP Act 2023 / GDPR) -->
+  <div class="reader-modal-backdrop" id="cookie-preferences-backdrop"></div>
+  <aside class="cookie-preferences-modal font-inter" id="cookie-preferences-modal" role="dialog" aria-modal="true" aria-labelledby="modal-cookie-title" aria-hidden="true">
+    <div class="reader-modal-header">
+      <div class="d-flex align-items-center gap-2">
+        <span class="font-mono text-2xs uppercase tracking-widest text-muted">DATA GOVERNANCE // PREFERENCES</span>
+        <span class="badge bg-secondary font-jetbrains" style="font-size: 10px;">DPDP 2023 Aligned</span>
+      </div>
+      <button type="button" class="btn-close-cookie-modal" style="background:none; border:none; color:#a1a1aa; font-size:20px; cursor:pointer;" aria-label="Close dialog">&times;</button>
+    </div>
+
+    <div class="reader-modal-body" style="overflow-y: auto; max-height: calc(88vh - 140px); display: flex; flex-direction: column; gap: 16px;">
+      <div>
+        <h3 id="modal-cookie-title" class="font-jetbrains" style="font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 6px;">Privacy &amp; Cookie Preferences</h3>
+        <p class="font-mono text-xs" style="color: #a1a1aa; line-height: 1.5; margin-bottom: 0;">
+          Configure how GreyCircuit Technologies stores and accesses data in your browser. All identifiers are stored locally on your device in compliance with the Digital Personal Data Protection Act (DPDP) 2023 and GDPR guidelines.
+        </p>
+      </div>
+
+      <!-- Preference Options List -->
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <!-- Option 1: Essential (Required) -->
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 14px 16px;">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="font-jetbrains" style="font-size: 13px; font-weight: 600; color: #fff;">Strictly Essential &amp; Security</span>
+                <span class="badge font-mono" style="font-size: 9px; background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3);">Always Active</span>
+              </div>
+              <p class="font-mono text-xs" style="color: #71717a; margin-top: 4px; margin-bottom: 0; line-height: 1.4;">
+                Required for core website navigation, rate-limiting fraud protection, session security tokens, and consent record storage.
+              </p>
+            </div>
+            <input type="checkbox" checked disabled style="cursor: not-allowed; accent-color: #3b82f6; width: 16px; height: 16px; margin-top: 3px;">
+          </div>
+        </div>
+
+        <!-- Option 2: Reader Preferences -->
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 14px 16px;">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+            <div>
+              <span class="font-jetbrains" style="font-size: 13px; font-weight: 600; color: #fff;">Functional &amp; Reader Identity</span>
+              <p class="font-mono text-xs" style="color: #71717a; margin-top: 4px; margin-bottom: 0; line-height: 1.4;">
+                Preserves your guest display name, profile biography, avatar styling, and engagement state locally across visits.
+              </p>
+            </div>
+            <input type="checkbox" id="pref-category-preferences" checked style="cursor: pointer; accent-color: #3b82f6; width: 16px; height: 16px; margin-top: 3px;">
+          </div>
+        </div>
+
+        <!-- Option 3: Analytics / Telemetry -->
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 14px 16px;">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+            <div>
+              <span class="font-jetbrains" style="font-size: 13px; font-weight: 600; color: #fff;">Telemetry &amp; Diagnostics</span>
+              <p class="font-mono text-xs" style="color: #71717a; margin-top: 4px; margin-bottom: 0; line-height: 1.4;">
+                Pseudonymous telemetry to evaluate article popularity, performance metrics, and application stability. No commercial ad tracking.
+              </p>
+            </div>
+            <input type="checkbox" id="pref-category-analytics" style="cursor: pointer; accent-color: #3b82f6; width: 16px; height: 16px; margin-top: 3px;">
+          </div>
+        </div>
+      </div>
+
+      <!-- Legal Notice & Data Protection Officer Contact -->
+      <div style="padding: 10px 14px; background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.15); border-radius: 8px;">
+        <p class="font-mono text-2xs" style="color: #93c5fd; margin-bottom: 0; line-height: 1.4;">
+          <strong>Data Fiduciary:</strong> GreyCircuit Technologies Private Limited.<br>
+          For privacy inquiries or to exercise your DPDP statutory rights (Correction, Erasure, Grievance), contact our grievance officer at <a href="mailto:privacy@greycircuit.tech" style="color: #60a5fa; text-decoration: underline;">privacy@greycircuit.tech</a>.
+        </p>
+      </div>
+    </div>
+
+    <div class="reader-modal-footer" style="padding: 1rem 1.6rem; border-top: 1px solid rgba(255,255,255,0.07); display: flex; align-items: center; justify-content: space-between; gap: 10px; background: rgba(255,255,255,0.015);">
+      <button type="button" class="btn btn-secondary btn-sm font-jetbrains btn-close-cookie-modal" style="font-size: 11px; padding: 7px 14px;">Cancel</button>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" class="btn btn-secondary btn-sm font-jetbrains" id="btn-pref-reject-all" style="font-size: 11px; padding: 7px 14px;">Reject Optional</button>
+        <button type="button" class="btn btn-primary btn-sm font-jetbrains" id="btn-save-cookie-preferences" style="font-size: 11px; padding: 7px 16px;">Save Preferences</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- First-Visit Privacy & Cookie Consent Banner (Section 12) -->
+  <div class="privacy-consent-banner" id="privacy-consent-banner" role="region" aria-label="Privacy and Cookie Consent">
+    <div class="consent-inner">
+      <div style="flex: 1; min-width: 280px;">
+        <div class="font-mono text-2xs uppercase tracking-widest text-muted mb-1">PRIVACY &amp; DATA GOVERNANCE // GCT</div>
+        <p class="small text-light mb-0" style="font-size: 12.5px; line-height: 1.5; color: #d4d4d8;">
+          GreyCircuit Technologies collects essential session data and pseudonymous technical identifiers for security, rate-limiting, and reader engagement. Optional telemetry and preference cookies require your explicit consent.
+        </p>
+      </div>
+      <div class="consent-actions font-jetbrains">
+        <button type="button" class="btn btn-primary btn-sm" id="btn-consent-accept-all" style="padding: 8px 16px; font-size: 11px;">Accept All</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-consent-reject-opt" style="padding: 8px 16px; font-size: 11px;">Reject Optional</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-consent-manage" style="padding: 8px 12px; font-size: 11px;">Manage Preferences</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Public Configuration & Runtime Scripts -->
   <script src="config.js"></script>
+  <script src="vendor/supabase/supabase.js"></script>
+  <script src="reader-client.js" defer></script>
   <script src="script.js" defer></script>
   <script>
     (async () => {
       function escapeHtml(str) {
-        return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        return String(str || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function resolveArticleImageUrl(rawPath, baseUrl) {
+        if (!rawPath || typeof rawPath !== 'string') return null;
+        const trimmed = rawPath.trim();
+        if (!trimmed) return null;
+        // Strict security filtering: reject unsafe schemes
+        if (/^(?:javascript|data|file|vbscript):/i.test(trimmed)) return null;
+        // Secure external HTTPS URLs pass through directly
+        if (/^https:\/\//i.test(trimmed)) return trimmed;
+        // Insecure http is rejected to ensure HTTPS-only compliance
+        if (/^http:\/\//i.test(trimmed)) return null;
+        try {
+          const loc = new URL(baseUrl || window.location.href);
+          const cleanRelative = trimmed.replace(/^\/+/, '');
+          const baseDir = loc.pathname.substring(0, loc.pathname.lastIndexOf('/') + 1) || '/';
+          return new URL(cleanRelative, loc.origin + baseDir).href;
+        } catch (e) {
+          return null;
+        }
       }
 
       const SERIES_MAP = {
@@ -1339,58 +1923,488 @@
         `).join('');
       }
 
-      // 5. Comments & Moderation
+      // 5. Public Article Engagement, Moderation & Comments
       function initComments(articleId, activeSlug) {
         const form = document.getElementById('comment-form');
         const commentList = document.getElementById('comment-list');
         const countBadge = document.getElementById('comments-count-badge');
         const successAlert = document.getElementById('comment-success-alert');
         const errorAlert = document.getElementById('comment-error-alert');
+        const indCommentCount = document.getElementById('indicator-comment-count');
+        const indReplyCount = document.getElementById('indicator-reply-count');
+        const writeCommentBtn = document.getElementById('btn-write-comment');
+
+        const formPanel = document.getElementById('comment-form-panel');
+        const cancelCommentBtn = document.getElementById('btn-cancel-comment');
+        const nameInput = document.getElementById('comment-author-name');
+        const emailInput = document.getElementById('comment-author-email');
+
+        function prefillCommentAuthor() {
+          const idData = window.GCTReader?.getIdentity?.();
+          if (idData) {
+            if (idData.displayName && nameInput && !nameInput.value) {
+              nameInput.value = idData.displayName;
+            }
+            if (idData.workEmail && emailInput && !emailInput.value) {
+              emailInput.value = idData.workEmail;
+            }
+          }
+        }
+
+        // Wire Expandable Write a Comment button in toolbar
+        if (writeCommentBtn) {
+          writeCommentBtn.addEventListener('click', () => {
+            const textarea = document.getElementById('comment-body');
+            if (formPanel) {
+              formPanel.style.display = 'block';
+              prefillCommentAuthor();
+              formPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              formPanel.classList.add('highlight-pulse');
+              setTimeout(() => formPanel.classList.remove('highlight-pulse'), 1800);
+              setTimeout(() => textarea?.focus(), 400);
+            }
+          });
+        }
+
+        if (cancelCommentBtn) {
+          cancelCommentBtn.addEventListener('click', () => {
+            if (formPanel) {
+              formPanel.style.display = 'none';
+            }
+          });
+        }
+
+        // Deterministic geometric avatar derived from stable hash of commenter identity
+        function generateIdenticonSvg(name) {
+          let hash = 5381;
+          const str = String(name || 'Anonymous').trim().toLowerCase();
+          for (let i = 0; i < str.length; i++) {
+            hash = ((hash << 5) + hash) + str.charCodeAt(i);
+          }
+          const hue1 = Math.abs(hash % 360);
+          const hue2 = (hue1 + 50) % 360;
+          const initials = (name || 'GC').split(' ').filter(Boolean).map(n => n[0]).slice(0, 2).join('').toUpperCase() || 'GC';
+
+          return `<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" class="comment-identicon" aria-hidden="true">
+            <rect width="28" height="28" rx="6" fill="hsl(${hue1}, 40%, 14%)" stroke="hsl(${hue1}, 50%, 25%)" stroke-width="0.75" />
+            <circle cx="14" cy="14" r="8" fill="hsl(${hue2}, 45%, 22%)" opacity="0.6" />
+            <path d="M5 23 L14 14 L23 23" stroke="hsl(${hue1}, 65%, 45%)" stroke-width="1.2" opacity="0.4" />
+            <text x="14" y="17.5" font-family="'JetBrains Mono', monospace" font-size="9.5" font-weight="700" fill="hsl(${hue2}, 75%, 85%)" text-anchor="middle">${initials}</text>
+          </svg>`;
+        }
+
+        let allApprovedComments = [];
+      function recordUserCommentHistory(commentContent, isReply) {
+        try {
+          const history = JSON.parse(localStorage.getItem('gct_user_comments_history') || '[]');
+          const urlParams = new URLSearchParams(window.location.search);
+          const currentSlug = urlParams.get('slug') || '';
+          const currentTitle = document.getElementById('article-title')?.textContent?.trim() || document.title.replace(' | Grey Circuit Technologies', '');
+          history.unshift({
+            content: commentContent,
+            isReply: !!isReply,
+            articleSlug: currentSlug,
+            articleTitle: currentTitle,
+            timestamp: new Date().toISOString()
+          });
+          localStorage.setItem('gct_user_comments_history', JSON.stringify(history.slice(0, 50)));
+        } catch {}
+      }
+        let visibleCommentLimit = 15;
 
         async function fetchApprovedComments() {
-          let comments = [];
+          let rawComments = [];
           try {
             const cfg = window.__GCT_CONFIG__ || null;
             if (cfg && cfg.supabaseUrl && cfg.anonKey && articleId) {
-              // SECURITY & PRIVACY VIEW: approved_comments NEVER exposes author_email, client_hash, or moderation flags
               const res = await fetch(`${cfg.supabaseUrl}/rest/v1/approved_comments?article_id=eq.${encodeURIComponent(articleId)}&order=created_at.asc`, {
-                headers: { apikey: cfg.anonKey }
+                headers: {
+                  apikey: cfg.anonKey,
+                  Authorization: `Bearer ${cfg.anonKey}`
+                }
               });
               if (res.ok) {
-                comments = await res.json();
+                rawComments = await res.json();
               }
             }
           } catch (err) {
             console.warn('[GCT Blog] Failed to fetch approved comments:', err);
           }
 
+          const topLevel = rawComments.filter(c => !c.parent_id);
+          const replies = rawComments.filter(c => Boolean(c.parent_id));
+
+          // Attach replies to parents
+          topLevel.forEach(c => {
+            c.replies = replies.filter(r => r.parent_id === c.id);
+          });
+
+          // Non-interactive engagement indicators in toolbar
+          if (indCommentCount) indCommentCount.textContent = topLevel.length;
+          if (indReplyCount) indReplyCount.textContent = replies.length;
+
+          // Section heading count badge
+          const totalApproved = rawComments.length;
           if (countBadge) {
-            countBadge.textContent = `${comments.length} ${comments.length === 1 ? 'Comment' : 'Comments'}`;
+            countBadge.textContent = `${totalApproved} ${totalApproved === 1 ? 'Comment' : 'Comments'}`;
           }
 
-          if (commentList) {
-            if (comments.length === 0) {
-              commentList.innerHTML = `
-                <div class="comment-empty-message">
-                  No peer contributions yet. Professional engineers and architects are invited to begin the technical discourse.
-                </div>
-              `;
-            } else {
-              commentList.innerHTML = comments.map(c => `
-                <div class="comment-item">
-                  <div class="comment-author-bar">
-                    <div class="comment-avatar">${escapeHtml((c.author_name || 'U').charAt(0).toUpperCase())}</div>
-                    <div class="comment-name">${escapeHtml(c.author_name)}</div>
-                    <span style="opacity: 0.3;">&bull;</span>
-                    <div class="comment-date">${new Date(c.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</div>
-                  </div>
-                  <p class="comment-text">${escapeHtml(c.content)}</p>
-                </div>
-              `).join('');
-            }
-          }
+          // Sort top-level comments by likes first, reply count second
+          topLevel.sort((a, b) => {
+            const likesA = (a.like_count || 0) + (parseInt(localStorage.getItem(`gct_clike_${a.id}`) || '0', 10) > 0 ? 1 : 0);
+            const likesB = (b.like_count || 0) + (parseInt(localStorage.getItem(`gct_clike_${b.id}`) || '0', 10) > 0 ? 1 : 0);
+            if (likesB !== likesA) return likesB - likesA;
+            return (b.replies?.length || 0) - (a.replies?.length || 0);
+          });
+
+          allApprovedComments = topLevel;
+          renderCommentsList();
         }
 
+        function renderCommentsList() {
+          if (!commentList) return;
+
+          if (allApprovedComments.length === 0) {
+            commentList.innerHTML = `
+              <div class="comment-empty-message font-jetbrains">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 8px; opacity: 0.5;">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+                <div>No public comments published yet for this research paper.</div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Technical practitioners and systems architects are invited to begin the discourse.</div>
+              </div>
+            `;
+            return;
+          }
+
+          const visibleComments = allApprovedComments.slice(0, visibleCommentLimit);
+          const hasMore = allApprovedComments.length > visibleCommentLimit;
+          const remainingCount = allApprovedComments.length - visibleCommentLimit;
+
+          commentList.innerHTML = visibleComments.map(c => renderCommentItemHtml(c)).join('') +
+            (hasMore ? `
+              <button type="button" class="btn-view-more-comments font-jetbrains" id="btn-view-more-comments">
+                View More Comments (${remainingCount} Remaining) &darr;
+              </button>
+            ` : '');
+
+          // Attach event listeners
+          attachCommentInteractions();
+        }
+
+        function renderCommentItemHtml(c) {
+          const isLiked = localStorage.getItem(`gct_clike_${c.id}`) === '1';
+          const localOffset = isLiked ? 1 : 0;
+          const displayLikes = Math.max(0, (c.like_count || 0) + localOffset);
+          const dateStr = new Date(c.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+          const isRemoved = c.status === 'removed' || c.content === '[comment removed by the moderators]';
+          const displayContent = isRemoved
+            ? `<span style="color: rgba(255, 255, 255, 0.4); font-style: italic;">[comment removed by the moderators]</span>`
+            : escapeHtml(c.content || '');
+
+          return `
+            <div class="comment-item" id="comment-node-${escapeHtml(c.id)}">
+              <div class="comment-main-row">
+                <div class="comment-body-col">
+                  <div class="comment-author-bar">
+                    ${generateIdenticonSvg(c.author_name)}
+                    <span class="comment-name">${escapeHtml(c.author_name)}</span>
+                    <span style="opacity: 0.25; color: var(--text-muted);">&bull;</span>
+                    <span class="comment-date font-jetbrains">${dateStr}</span>
+                  </div>
+                  <p class="comment-text">${displayContent}</p>
+                  ${!isRemoved ? `
+                    <div class="comment-footer-actions">
+                      <button type="button" class="btn-reply-action font-jetbrains" data-parent-id="${escapeHtml(c.id)}">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <polyline points="9 17 4 12 9 7"></polyline>
+                          <path d="M20 18v-2a4 4 0 0 0-4-4H4"></path>
+                        </svg>
+                        Reply
+                      </button>
+                    </div>
+                  ` : ''}
+                </div>
+
+                ${!isRemoved ? `
+                  <!-- Comment Like Control on Right -->
+                  <div class="comment-like-col">
+                    <button type="button" class="comment-like-btn ${isLiked ? 'liked' : ''}" data-comment-id="${escapeHtml(c.id)}" aria-label="Like this comment" title="Like comment">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                      </svg>
+                      <span class="comment-like-count">${displayLikes}</span>
+                    </button>
+                  </div>
+                ` : ''}
+              </div>
+
+              <!-- Inline Reply Editor (Hidden by default) -->
+              ${!isRemoved ? `
+                <div class="reply-editor-panel" id="reply-editor-${escapeHtml(c.id)}" style="display: none;">
+                  <form class="reply-form" data-parent-id="${escapeHtml(c.id)}">
+                    <div class="reply-form-grid">
+                      <input type="text" class="form-input form-input-sm reply-author-name" required placeholder="Your Name *" maxlength="100">
+                      <input type="email" class="form-input form-input-sm reply-author-email" required placeholder="Work Email * (Confidential)" maxlength="120">
+                    </div>
+                    <textarea class="form-textarea form-textarea-sm reply-body" rows="2" required placeholder="Write a technical response to ${escapeHtml(c.author_name)}..." maxlength="2000"></textarea>
+                    <div style="display:flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 8px;">
+                      <button type="button" class="btn btn-secondary btn-sm btn-cancel-reply font-jetbrains" data-parent-id="${escapeHtml(c.id)}" style="padding: 6px 14px; font-size: 11px;">Cancel</button>
+                      <button type="submit" class="btn btn-primary btn-sm font-jetbrains" style="padding: 6px 14px; font-size: 11px;">POST REPLY</button>
+                    </div>
+                    <div class="reply-feedback font-jetbrains" style="display: none; margin-top: 8px; font-size: 11px; padding: 6px 10px; border-radius: 6px;"></div>
+                  </form>
+                </div>
+              ` : ''}
+
+              <!-- One Level of Threaded Replies -->
+              ${(c.replies && c.replies.length > 0) ? `
+                <div class="comment-replies-list">
+                  ${c.replies.map(r => renderReplyItemHtml(r)).join('')}
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }
+
+        function renderReplyItemHtml(r) {
+          const isLiked = localStorage.getItem(`gct_clike_${r.id}`) === '1';
+          const localOffset = isLiked ? 1 : 0;
+          const displayLikes = Math.max(0, (r.like_count || 0) + localOffset);
+          const dateStr = new Date(r.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+          const isRemoved = r.status === 'removed' || r.content === '[comment removed by the moderators]';
+          const displayContent = isRemoved
+            ? `<span style="color: rgba(255, 255, 255, 0.4); font-style: italic;">[comment removed by the moderators]</span>`
+            : escapeHtml(r.content || '');
+
+          return `
+            <div class="comment-reply-item" id="comment-node-${escapeHtml(r.id)}">
+              <div class="comment-main-row">
+                <div class="comment-body-col">
+                  <div class="comment-author-bar">
+                    ${generateIdenticonSvg(r.author_name)}
+                    <span class="comment-name" style="font-size: 12.5px;">${escapeHtml(r.author_name)}</span>
+                    <span style="opacity: 0.25; color: var(--text-muted);">&bull;</span>
+                    <span class="comment-date font-jetbrains" style="font-size: 10px;">${dateStr}</span>
+                  </div>
+                  <p class="comment-text" style="font-size: 13px;">${displayContent}</p>
+                </div>
+                ${!isRemoved ? `
+                  <div class="comment-like-col">
+                    <button type="button" class="comment-like-btn ${isLiked ? 'liked' : ''}" data-comment-id="${escapeHtml(r.id)}" aria-label="Like this reply" title="Like reply">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                      </svg>
+                      <span class="comment-like-count">${displayLikes}</span>
+                    </button>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          `;
+        }
+
+        function attachCommentInteractions() {
+          // View More Comments pagination button
+          const moreBtn = document.getElementById('btn-view-more-comments');
+          if (moreBtn) {
+            moreBtn.addEventListener('click', () => {
+              visibleCommentLimit += 4;
+              renderCommentsList();
+            });
+          }
+
+          // Reply toggle buttons
+          commentList?.querySelectorAll('.btn-reply-action').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const pid = btn.getAttribute('data-parent-id');
+              const panel = document.getElementById(`reply-editor-${pid}`);
+              if (panel) {
+                const isOpen = panel.style.display !== 'none';
+                panel.style.display = isOpen ? 'none' : 'block';
+                if (!isOpen) {
+                  const idData = window.GCTReader?.getIdentity?.();
+                  if (idData) {
+                    const rName = panel.querySelector('.reply-author-name');
+                    const rEmail = panel.querySelector('.reply-author-email');
+                    if (idData.displayName && rName && !rName.value) rName.value = idData.displayName;
+                    if (idData.workEmail && rEmail && !rEmail.value) rEmail.value = idData.workEmail;
+                  }
+                  const ta = panel.querySelector('.reply-body');
+                  setTimeout(() => ta?.focus(), 100);
+                }
+              }
+            });
+          });
+
+          // Cancel reply buttons
+          commentList?.querySelectorAll('.btn-cancel-reply').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const pid = btn.getAttribute('data-parent-id');
+              const panel = document.getElementById(`reply-editor-${pid}`);
+              if (panel) panel.style.display = 'none';
+            });
+          });
+
+          // Reply form submissions
+          commentList?.querySelectorAll('.reply-form').forEach(rForm => {
+            rForm.addEventListener('submit', async (e) => {
+              e.preventDefault();
+              const pid = rForm.getAttribute('data-parent-id');
+              const nameInput = rForm.querySelector('.reply-author-name');
+              const emailInput = rForm.querySelector('.reply-author-email');
+              const bodyInput = rForm.querySelector('.reply-body');
+              const feedback = rForm.querySelector('.reply-feedback');
+              const submitBtn = rForm.querySelector('button[type="submit"]');
+
+              const authorName = nameInput?.value.trim();
+              const authorEmail = emailInput?.value.trim();
+              const content = bodyInput?.value.trim();
+
+              if (!authorName || !authorEmail || !content) return;
+
+              let fp = localStorage.getItem('gct_user_fp');
+              if (!fp || fp.length < 16) {
+                fp = 'gct_fp_' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Math.random().toString(36).substring(2) + Date.now().toString(36));
+                localStorage.setItem('gct_user_fp', fp);
+              }
+
+              const payload = {
+                article_id: articleId,
+                parent_id: pid,
+                author_name: authorName,
+                author_email: authorEmail,
+                content: content,
+                status: 'pending',
+                client_hash: fp
+              };
+
+              if (submitBtn) submitBtn.disabled = true;
+
+              try {
+                const cfg = window.__GCT_CONFIG__ || null;
+                if (!cfg?.supabaseUrl || !cfg?.anonKey) throw new Error('Supabase database endpoint is not configured.');
+
+                const res = await fetch(`${cfg.supabaseUrl}/rest/v1/article_comments`, {
+                  method: 'POST',
+                  headers: {
+                    apikey: cfg.anonKey,
+                    Authorization: `Bearer ${cfg.anonKey}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal'
+                  },
+                  body: JSON.stringify(payload)
+                });
+
+                if (!res.ok) {
+                  const errData = await res.json().catch(() => ({}));
+                  throw new Error(errData.message || `HTTP ${res.status}`);
+                }
+
+                recordUserCommentHistory(content, true);
+                rForm.reset();
+                if (feedback) {
+                  feedback.style.display = 'block';
+                  feedback.style.background = 'rgba(34, 197, 94, 0.15)';
+                  feedback.style.color = '#4ade80';
+                  feedback.style.border = '1px solid rgba(34, 197, 94, 0.3)';
+                  feedback.textContent = '✓ Your reply has been submitted for editorial moderation.';
+                  setTimeout(() => {
+                    const panel = document.getElementById(`reply-editor-${pid}`);
+                    if (panel) panel.style.display = 'none';
+                    feedback.style.display = 'none';
+                  }, 2000);
+                }
+                await fetchApprovedComments();
+              } catch (err) {
+                console.error('[GCT Blog] Reply submission failure:', err);
+                if (feedback) {
+                  feedback.style.display = 'block';
+                  feedback.style.background = 'rgba(239, 68, 68, 0.15)';
+                  feedback.style.color = '#f87171';
+                  feedback.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+                  feedback.textContent = `Error: ${err.message}. Please try again.`;
+                }
+              } finally {
+                if (submitBtn) submitBtn.disabled = false;
+              }
+            });
+          });
+
+          // Comment and reply like buttons
+          commentList?.querySelectorAll('.comment-like-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+              const cid = btn.getAttribute('data-comment-id');
+              const countEl = btn.querySelector('.comment-like-count');
+              let curCount = parseInt(countEl?.textContent || '0', 10);
+              const isLiked = localStorage.getItem(`gct_clike_${cid}`) === '1';
+
+              let fp = localStorage.getItem('gct_user_fp');
+              if (!fp || fp.length < 16) {
+                fp = 'gct_fp_' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Math.random().toString(36).substring(2) + Date.now().toString(36));
+                localStorage.setItem('gct_user_fp', fp);
+              }
+
+              let secret = localStorage.getItem(`gct_csec_${cid}`);
+              if (!secret || secret.length < 16) {
+                secret = 'gct_sec_' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Math.random().toString(36).substring(2) + Date.now().toString(36));
+                localStorage.setItem(`gct_csec_${cid}`, secret);
+              }
+
+              btn.disabled = true;
+
+              try {
+                const cfg = window.__GCT_CONFIG__ || null;
+                const rpcEndpoint = isLiked ? 'remove_comment_like' : 'record_comment_like';
+
+                if (cfg?.supabaseUrl && cfg?.anonKey) {
+                  const res = await fetch(`${cfg.supabaseUrl}/rest/v1/rpc/${rpcEndpoint}`, {
+                    method: 'POST',
+                    headers: {
+                      apikey: cfg.anonKey,
+                      Authorization: `Bearer ${cfg.anonKey}`,
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      p_comment_id: cid,
+                      p_client_hash: fp,
+                      p_secret: secret
+                    })
+                  }).catch(() => null);
+
+                  if (res && res.ok) {
+                    const rpcData = await res.json().catch(() => null);
+                    if (rpcData && typeof rpcData.count === 'number') {
+                      curCount = rpcData.count;
+                    } else {
+                      curCount = isLiked ? Math.max(0, curCount - 1) : curCount + 1;
+                    }
+                  } else {
+                    curCount = isLiked ? Math.max(0, curCount - 1) : curCount + 1;
+                  }
+                } else {
+                  curCount = isLiked ? Math.max(0, curCount - 1) : curCount + 1;
+                }
+
+                if (isLiked) {
+                  localStorage.removeItem(`gct_clike_${cid}`);
+                  btn.classList.remove('liked');
+                } else {
+                  localStorage.setItem(`gct_clike_${cid}`, '1');
+                  btn.classList.add('liked');
+                }
+
+                if (countEl) countEl.textContent = curCount;
+              } catch (err) {
+                console.warn('[GCT Blog] Comment like toggle warning:', err);
+              } finally {
+                btn.disabled = false;
+              }
+            });
+          });
+        }
+
+        // Top-level Comment Form Submission
         form?.addEventListener('submit', async (e) => {
           e.preventDefault();
           if (errorAlert) errorAlert.style.display = 'none';
@@ -1420,7 +2434,7 @@
             author_name: authorName,
             author_email: authorEmail,
             content: commentBody,
-            status: 'pending', // Mandatory moderation constraint enforced by RLS
+            status: 'pending',
             client_hash: fp
           };
 
@@ -1449,11 +2463,14 @@
               throw new Error(errData.message || `Submission failed with HTTP ${res.status}`);
             }
 
+            recordUserCommentHistory(content, false);
             form.reset();
             if (successAlert) {
+              successAlert.textContent = '✓ Your comment has been submitted for editorial moderation and will appear once approved.';
               successAlert.style.display = 'block';
-              setTimeout(() => { successAlert.style.display = 'none'; }, 8000);
+              setTimeout(() => { successAlert.style.display = 'none'; }, 6000);
             }
+            await fetchApprovedComments();
           } catch (err) {
             console.error('[GCT Blog] Comment submission failure:', err);
             if (errorAlert) {
@@ -1488,6 +2505,37 @@
           badgeEl.textContent = meta.name;
           badgeEl.style.color = meta.accent;
           badgeEl.style.borderColor = `${meta.accent}55`;
+        }
+
+        // Hydrate Article Cover Image into Title Section Background
+        const headerBg = document.getElementById('article-header-bg');
+        if (headerBg) {
+          const rawImg = art.featured_image || art.cover_image || '';
+          const resolvedImgUrl = resolveArticleImageUrl(rawImg);
+          if (resolvedImgUrl) {
+            const preloader = new Image();
+            preloader.onload = () => {
+              headerBg.style.backgroundImage = `url("${resolvedImgUrl}")`;
+              headerBg.classList.add('is-loaded');
+            };
+            preloader.onerror = () => {
+              headerBg.style.display = 'none';
+            };
+            preloader.src = resolvedImgUrl;
+          } else {
+            headerBg.style.display = 'none';
+          }
+        }
+
+        // Set Open Graph / Twitter image if available
+        if (art.featured_image) {
+          const resolvedOg = resolveArticleImageUrl(art.featured_image);
+          if (resolvedOg) {
+            const ogImg = document.getElementById('og-image');
+            if (ogImg) ogImg.setAttribute('content', resolvedOg);
+            const twImg = document.querySelector('meta[name="twitter:image"]');
+            if (twImg) twImg.setAttribute('content', resolvedOg);
+          }
         }
 
         if (art.content_html) {

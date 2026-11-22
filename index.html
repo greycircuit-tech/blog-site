@@ -155,8 +155,6 @@
 <body class="selection-invert">
   <a href="#main-content" class="skip-link">Skip to main content</a>
   <div class="noise-overlay" aria-hidden="true"></div>
-  <div id="cursor-dot" aria-hidden="true"></div>
-  <div id="cursor-ring" aria-hidden="true"></div>
 
   <!-- Primary Navigation (Dynamic Island + Mobile Slide-Out Drawer) -->
   <header>
@@ -187,8 +185,6 @@
           </div>
 
           <a href="https://greycircuit.tech/projects/project.html" class="island-link magnetic" data-magnetic>Projects</a>
-          <a href="https://greycircuit.tech#industries" class="island-link magnetic" data-magnetic>Industries</a>
-          <a href="https://greycircuit.tech#approach" class="island-link magnetic" data-magnetic>Approach</a>
           <a href="https://blog.greycircuit.tech" class="island-link magnetic is-active-section" data-magnetic>Blog</a>
         </div>
 
@@ -201,6 +197,22 @@
         </button>
       </div>
     </nav>
+
+    <!-- Reader Profile Stationary Avatar & Right-Expanding Greeting Capsule -->
+    <div class="reader-profile-widget" id="reader-profile-widget" aria-label="Reader Profile & Settings">
+      <button type="button" class="profile-capsule-btn" id="btn-reader-profile" aria-expanded="false" aria-haspopup="dialog" title="Reader Profile & Preferences">
+        <div class="profile-avatar-wrap" id="profile-avatar-wrap">
+          <svg class="profile-avatar-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </div>
+        <div class="profile-greeting-shelf" id="profile-greeting-shelf" aria-hidden="true">
+          <span class="greeting-prefix font-mono text-2xs" id="greeting-prefix">Hi,</span>
+          <span class="greeting-name font-jetbrains" id="greeting-name">Guest</span>
+        </div>
+      </button>
+    </div>
 
     <!-- Accessible Mobile Slide-Out Drawer -->
     <div class="mobile-drawer-backdrop" id="mobile-drawer-backdrop" hidden></div>
@@ -220,10 +232,9 @@
           <a href="https://greycircuit.tech/services/swe-service/software-engineering.html">→ Software Engineering</a>
         </div>
         <a href="https://greycircuit.tech/projects/project.html" class="mobile-drawer-link">04 / Selected Projects</a>
-        <a href="https://greycircuit.tech#industries" class="mobile-drawer-link">05 / Industries</a>
-        <a href="https://greycircuit.tech#approach" class="mobile-drawer-link">06 / Execution Model</a>
-        <a href="https://greycircuit.tech/whitepaper.html" class="mobile-drawer-link">07 / Whitepaper</a>
-        <a href="https://blog.greycircuit.tech" class="mobile-drawer-link active">08 / Blog</a>
+        <a href="https://greycircuit.tech/whitepaper.html" class="mobile-drawer-link">05 / Whitepaper</a>
+        <a href="https://blog.greycircuit.tech" class="mobile-drawer-link active">06 / Blog</a>
+        <button type="button" class="mobile-drawer-link" id="btn-mobile-reader-profile" style="background:none;border:none;width:100%;text-align:left;cursor:pointer;">07 / Reader Profile</button>
         <a href="https://greycircuit.tech#contact" class="mobile-drawer-cta">Start a Conversation ↗</a>
       </nav>
     </aside>
@@ -445,13 +456,217 @@
           <span>DPDP Act 2023 Aligned</span>
           <span class="footer-sep">&bull;</span>
           <span>ISO 27001 Posture</span>
+          <span class="footer-sep">&bull;</span>
+          <a href="#" id="link-privacy-preferences" style="color: inherit; text-decoration: underline;">Cookie &amp; Privacy Preferences</a>
         </div>
       </div>
     </div>
   </footer>
 
+  <!-- Reader Profile Modal -->
+  <div class="reader-modal-backdrop" id="reader-profile-backdrop"></div>
+  <aside class="reader-profile-modal font-inter" id="reader-profile-modal" role="dialog" aria-modal="true" aria-labelledby="modal-profile-title" aria-hidden="true">
+    <div class="reader-modal-header">
+      <div class="d-flex align-items-center gap-2">
+        <span class="font-mono text-2xs uppercase tracking-widest text-muted">READER // CONTROL PLANE</span>
+        <span id="modal-auth-mode-badge" class="badge bg-secondary font-jetbrains" style="font-size: 10px;">Guest Mode</span>
+      </div>
+      <button type="button" class="btn-close-profile-modal" style="background:none; border:none; color:#fff; font-size:20px; cursor:pointer;" aria-label="Close dialog">&times;</button>
+    </div>
+
+    <div class="reader-modal-body">
+      <!-- SECTION 01 — IDENTITY OVERVIEW -->
+      <div class="reader-modal-section no-border" id="modal-sec-overview">
+        <div class="reader-section-header">
+          <span class="reader-section-label">01 // IDENTITY OVERVIEW</span>
+        </div>
+        <div id="modal-guest-notice" class="modal-guest-warning font-jetbrains" style="display: none;">
+          <div class="guest-warning-title">GUEST SESSION ACTIVE</div>
+          <p class="guest-warning-desc">
+            Your pseudonymous guest identity is temporary and tied strictly to this browser session. It does not carry across browsers or devices. Connecting a verified identity provider enables persistent cross-device identity, comments attribution, and authenticated profile control.
+          </p>
+        </div>
+      </div>
+
+      <!-- SECTION 02 — PERSONAL PROFILE -->
+      <div class="reader-modal-section" id="modal-sec-profile">
+        <div class="reader-section-header">
+          <span class="reader-section-label">02 // PERSONAL PROFILE</span>
+        </div>
+        <div class="profile-form-grid">
+          <div class="form-group">
+            <label for="modal-profile-name" class="form-label font-mono text-2xs uppercase tracking-widest text-muted">Display Name</label>
+            <input type="text" id="modal-profile-name" class="form-input" placeholder="e.g. Dr. Jane Doe" maxlength="100" />
+          </div>
+          <div class="form-group">
+            <label for="modal-profile-email" class="form-label font-mono text-2xs uppercase tracking-widest text-muted">Work Email (Confidential)</label>
+            <input type="email" id="modal-profile-email" class="form-input" placeholder="Not provided (session only)" readonly />
+            <div class="font-mono text-2xs text-muted mt-1" style="font-size: 10px; color: #71717a;">* Retained strictly for verification and rate-limiting. Never exposed publicly.</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="modal-profile-bio" class="form-label font-mono text-2xs uppercase tracking-widest text-muted">Short Biography</label>
+          <textarea id="modal-profile-bio" class="form-textarea" rows="2" placeholder="Technical focus or systems research background..." maxlength="250"></textarea>
+        </div>
+      </div>
+
+      <!-- SECTION 03 — ENGAGEMENT HISTORY -->
+      <div class="reader-modal-section" id="modal-sec-engagement">
+        <div class="reader-section-header">
+          <span class="reader-section-label">03 // ENGAGEMENT HISTORY</span>
+        </div>
+        <div id="modal-engagement-history">
+          <!-- Dynamically populated via reader-client.js -->
+        </div>
+      </div>
+
+      <!-- SECTION 04 — DATA RIGHTS & PRIVACY -->
+      <div class="reader-modal-section" id="modal-sec-privacy">
+        <div class="reader-section-header">
+          <span class="reader-section-label">04 // DATA RIGHTS &amp; PRIVACY (DPDP ACT 2023 / GDPR)</span>
+        </div>
+        <p class="font-jetbrains text-muted mb-3" style="font-size: 11px; line-height: 1.5; color: #a1a1aa;">
+          Clearing your guest session purges your pseudonymous tokens and local engagement records immediately from this browser. For authenticated accounts, server-side data deletion requests can be initiated securely.
+        </p>
+        <div class="d-flex flex-wrap gap-2">
+          <button type="button" class="btn btn-secondary btn-sm font-jetbrains" id="modal-btn-export-data" style="font-size: 11px; padding: 6px 14px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: -1px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Export Personal Data
+          </button>
+          <button type="button" class="btn btn-outline-danger btn-sm font-jetbrains" id="modal-btn-delete-account" style="font-size: 11px; padding: 6px 14px; color: #f87171; border-color: rgba(239,68,68,0.4);">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: -1px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            Clear Session / Deletion
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm font-jetbrains" id="modal-btn-privacy-pref" style="font-size: 11px; padding: 6px 14px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: -1px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            Privacy Preferences
+          </button>
+        </div>
+      </div>
+
+      <!-- SECTION 05 — IDENTITY PROVIDERS -->
+      <div class="reader-modal-section" id="modal-sec-providers">
+        <div class="reader-section-header">
+          <span class="reader-section-label">05 // IDENTITY PROVIDERS</span>
+        </div>
+        <p class="text-muted font-jetbrains mb-3" style="font-size: 11px; line-height: 1.45; color: #a1a1aa;">
+          Connect a verified identity provider to maintain persistent authenticated identity, signed comments, and engagement across supported devices.
+        </p>
+        <div id="modal-identity-providers-list" class="d-flex flex-column gap-2">
+          <!-- Populated dynamically via extensible provider registry -->
+        </div>
+      </div>
+    </div>
+
+    <div class="reader-modal-footer">
+      <button type="button" class="btn btn-primary font-jetbrains" id="modal-btn-save-profile">Save Profile</button>
+      <button type="button" class="btn btn-secondary font-jetbrains btn-close-profile-modal">Close</button>
+    </div>
+  </aside>
+
+  <!-- Cookie & Privacy Preferences Modal (DPDP Act 2023 / GDPR) -->
+  <div class="reader-modal-backdrop" id="cookie-preferences-backdrop"></div>
+  <aside class="cookie-preferences-modal font-inter" id="cookie-preferences-modal" role="dialog" aria-modal="true" aria-labelledby="modal-cookie-title" aria-hidden="true">
+    <div class="reader-modal-header">
+      <div class="d-flex align-items-center gap-2">
+        <span class="font-mono text-2xs uppercase tracking-widest text-muted">DATA GOVERNANCE // PREFERENCES</span>
+        <span class="badge bg-secondary font-jetbrains" style="font-size: 10px;">DPDP 2023 Aligned</span>
+      </div>
+      <button type="button" class="btn-close-cookie-modal" style="background:none; border:none; color:#a1a1aa; font-size:20px; cursor:pointer;" aria-label="Close dialog">&times;</button>
+    </div>
+
+    <div class="reader-modal-body" style="overflow-y: auto; max-height: calc(88vh - 140px); display: flex; flex-direction: column; gap: 16px;">
+      <div>
+        <h3 id="modal-cookie-title" class="font-jetbrains" style="font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 6px;">Privacy &amp; Cookie Preferences</h3>
+        <p class="font-mono text-xs" style="color: #a1a1aa; line-height: 1.5; margin-bottom: 0;">
+          Configure how GreyCircuit Technologies stores and accesses data in your browser. All identifiers are stored locally on your device in compliance with the Digital Personal Data Protection Act (DPDP) 2023 and GDPR guidelines.
+        </p>
+      </div>
+
+      <!-- Preference Options List -->
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <!-- Option 1: Essential (Required) -->
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 14px 16px;">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="font-jetbrains" style="font-size: 13px; font-weight: 600; color: #fff;">Strictly Essential &amp; Security</span>
+                <span class="badge font-mono" style="font-size: 9px; background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3);">Always Active</span>
+              </div>
+              <p class="font-mono text-xs" style="color: #71717a; margin-top: 4px; margin-bottom: 0; line-height: 1.4;">
+                Required for core website navigation, rate-limiting fraud protection, session security tokens, and consent record storage.
+              </p>
+            </div>
+            <input type="checkbox" checked disabled style="cursor: not-allowed; accent-color: #3b82f6; width: 16px; height: 16px; margin-top: 3px;">
+          </div>
+        </div>
+
+        <!-- Option 2: Reader Preferences -->
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 14px 16px;">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+            <div>
+              <span class="font-jetbrains" style="font-size: 13px; font-weight: 600; color: #fff;">Functional &amp; Reader Identity</span>
+              <p class="font-mono text-xs" style="color: #71717a; margin-top: 4px; margin-bottom: 0; line-height: 1.4;">
+                Preserves your guest display name, profile biography, avatar styling, and engagement state locally across visits.
+              </p>
+            </div>
+            <input type="checkbox" id="pref-category-preferences" checked style="cursor: pointer; accent-color: #3b82f6; width: 16px; height: 16px; margin-top: 3px;">
+          </div>
+        </div>
+
+        <!-- Option 3: Analytics / Telemetry -->
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 14px 16px;">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+            <div>
+              <span class="font-jetbrains" style="font-size: 13px; font-weight: 600; color: #fff;">Telemetry &amp; Diagnostics</span>
+              <p class="font-mono text-xs" style="color: #71717a; margin-top: 4px; margin-bottom: 0; line-height: 1.4;">
+                Pseudonymous telemetry to evaluate article popularity, performance metrics, and application stability. No commercial ad tracking.
+              </p>
+            </div>
+            <input type="checkbox" id="pref-category-analytics" style="cursor: pointer; accent-color: #3b82f6; width: 16px; height: 16px; margin-top: 3px;">
+          </div>
+        </div>
+      </div>
+
+      <!-- Legal Notice & Data Protection Officer Contact -->
+      <div style="padding: 10px 14px; background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.15); border-radius: 8px;">
+        <p class="font-mono text-2xs" style="color: #93c5fd; margin-bottom: 0; line-height: 1.4;">
+          <strong>Data Fiduciary:</strong> GreyCircuit Technologies Private Limited.<br>
+          For privacy inquiries or to exercise your DPDP statutory rights (Correction, Erasure, Grievance), contact our grievance officer at <a href="mailto:privacy@greycircuit.tech" style="color: #60a5fa; text-decoration: underline;">privacy@greycircuit.tech</a>.
+        </p>
+      </div>
+    </div>
+
+    <div class="reader-modal-footer" style="padding: 1rem 1.6rem; border-top: 1px solid rgba(255,255,255,0.07); display: flex; align-items: center; justify-content: space-between; gap: 10px; background: rgba(255,255,255,0.015);">
+      <button type="button" class="btn btn-secondary btn-sm font-jetbrains btn-close-cookie-modal" style="font-size: 11px; padding: 7px 14px;">Cancel</button>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" class="btn btn-secondary btn-sm font-jetbrains" id="btn-pref-reject-all" style="font-size: 11px; padding: 7px 14px;">Reject Optional</button>
+        <button type="button" class="btn btn-primary btn-sm font-jetbrains" id="btn-save-cookie-preferences" style="font-size: 11px; padding: 7px 16px;">Save Preferences</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- First-Visit Privacy & Cookie Consent Banner (Section 12) -->
+  <div class="privacy-consent-banner" id="privacy-consent-banner" role="region" aria-label="Privacy and Cookie Consent">
+    <div class="consent-inner">
+      <div style="flex: 1; min-width: 280px;">
+        <div class="font-mono text-2xs uppercase tracking-widest text-muted mb-1">PRIVACY &amp; DATA GOVERNANCE // GCT</div>
+        <p class="small text-light mb-0" style="font-size: 12.5px; line-height: 1.5; color: #d4d4d8;">
+          GreyCircuit Technologies collects essential session data and pseudonymous technical identifiers for security, rate-limiting, and reader engagement. Optional telemetry and preference cookies require your explicit consent.
+        </p>
+      </div>
+      <div class="consent-actions font-jetbrains">
+        <button type="button" class="btn btn-primary btn-sm" id="btn-consent-accept-all" style="padding: 8px 16px; font-size: 11px;">Accept All</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-consent-reject-opt" style="padding: 8px 16px; font-size: 11px;">Reject Optional</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-consent-manage" style="padding: 8px 12px; font-size: 11px;">Manage Preferences</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Public Configuration & Dynamic Content Hydration Script -->
   <script src="config.js"></script>
+  <script src="vendor/supabase/supabase.js"></script>
+  <script src="reader-client.js" defer></script>
   <script src="script.js" defer></script>
   <script>
     (() => {
@@ -508,6 +723,26 @@
 
       function escapeHtml(str) {
         return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+
+      function resolveArticleImageUrl(rawPath, baseUrl) {
+        if (!rawPath || typeof rawPath !== 'string') return null;
+        const trimmed = rawPath.trim();
+        if (!trimmed) return null;
+        // Strict security filtering: reject unsafe schemes
+        if (/^(?:javascript|data|file|vbscript):/i.test(trimmed)) return null;
+        // Secure external HTTPS URLs pass through directly
+        if (/^https:\/\//i.test(trimmed)) return trimmed;
+        // Insecure http is rejected to ensure HTTPS-only compliance
+        if (/^http:\/\//i.test(trimmed)) return null;
+        try {
+          const loc = new URL(baseUrl || window.location.href);
+          const cleanRelative = trimmed.replace(/^\/+/, '');
+          const baseDir = loc.pathname.substring(0, loc.pathname.lastIndexOf('/') + 1) || '/';
+          return new URL(cleanRelative, loc.origin + baseDir).href;
+        } catch (e) {
+          return null;
+        }
       }
 
       function highlightText(text, query) {
@@ -634,9 +869,25 @@
           articlesContainer.innerHTML = list.map(a => {
             const meta = getSeriesMeta(a.series);
             const dateStr = a.publishedAt ? new Date(a.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Nov 2026';
+            const resolvedImg = resolveArticleImageUrl(a.featuredImage || a.featured_image);
+            const coverHtml = resolvedImg
+              ? `<div class="insight-cover-wrap">
+                   <img src="${escapeHtml(resolvedImg)}" alt="${escapeHtml(a.title)}" class="insight-cover-img" loading="lazy" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
+                   <div class="insight-cover-fallback" style="display: none; background: radial-gradient(circle at 80% 20%, ${meta.accent}22, transparent 65%), linear-gradient(135deg, rgba(20, 24, 35, 0.95), rgba(10, 12, 18, 0.98));">
+                     <div class="insight-cover-accent-bar" style="background: ${meta.accent};"></div>
+                     <span class="insight-cover-kicker font-mono text-2xs uppercase tracking-widest" style="color: ${meta.accent};">${escapeHtml(meta.name)}</span>
+                   </div>
+                 </div>`
+              : `<div class="insight-cover-wrap">
+                   <div class="insight-cover-fallback" style="display: flex; background: radial-gradient(circle at 80% 20%, ${meta.accent}22, transparent 65%), linear-gradient(135deg, rgba(20, 24, 35, 0.95), rgba(10, 12, 18, 0.98));">
+                     <div class="insight-cover-accent-bar" style="background: ${meta.accent};"></div>
+                     <span class="insight-cover-kicker font-mono text-2xs uppercase tracking-widest" style="color: ${meta.accent};">${escapeHtml(meta.name)}</span>
+                   </div>
+                 </div>`;
 
             return `
               <a href="article.html?slug=${encodeURIComponent(a.slug)}" class="insight-card glass-panel article-card ${meta.class}" data-series="${escapeHtml(a.series)}">
+                ${coverHtml}
                 <div>
                   <div class="status-pill font-mono text-2xs uppercase tracking-widest" style="width: fit-content; margin-bottom: 1.25rem; color: ${meta.accent}; border-color: ${meta.accent}44;">
                     ${escapeHtml(a.seriesName || meta.name)}
@@ -957,6 +1208,7 @@
                     seriesAccent: sMeta.accent,
                     seriesTag: sMeta.name.split(' ')[0],
                     excerpt: r.excerpt,
+                    featuredImage: r.featured_image,
                     author: 'Ajoy A G',
                     readingTime: r.reading_time_minutes || 5,
                     publishedAt: r.published_at || r.created_at
