@@ -240,7 +240,7 @@
     </aside>
   </header>
 
-  <main id="main-content">
+  <main id="main-content" tabindex="-1">
     <!-- Blog Hero Section (Obsidian Architecture) -->
     <section class="blog-hero">
       <div class="ambient-glow hero-glow" aria-hidden="true"></div>
@@ -1228,6 +1228,13 @@
       applyFiltersAndRender();
     })();
   </script>
+
+  <!-- Floating Back to Top Control -->
+  <button type="button" class="back-to-top" id="btn-back-to-top" aria-label="Back to top" title="Back to top">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polyline points="18 15 12 9 6 15"></polyline>
+    </svg>
+  </button>
 </body>
 
 </html>

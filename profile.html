@@ -110,7 +110,7 @@
     </aside>
   </header>
 
-  <main id="main-content" class="profile-page-shell">
+  <main id="main-content" class="profile-page-shell" tabindex="-1">
     <div class="ambient-glow hero-glow" aria-hidden="true" style="top: 0; left: 50%; transform: translateX(-50%); opacity: 0.4;"></div>
 
     <!-- Page Header -->
@@ -157,7 +157,7 @@
         </div>
         <div class="profile-overview-actions">
           <a href="#section-general" class="btn btn-secondary btn-sm font-jetbrains" id="overview-btn-edit">Edit Profile</a>
-          <button type="button" class="btn btn-secondary btn-sm font-jetbrains" id="overview-btn-signout" style="color: #fca5a5; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08);">
+          <button type="button" class="btn btn-secondary btn-sm font-jetbrains" id="overview-btn-signout">
             Sign Out
           </button>
         </div>
@@ -173,19 +173,19 @@
           <div class="form-group">
             <label for="profile-form-name" class="form-label font-mono text-2xs uppercase tracking-widest text-muted">Display Name</label>
             <input type="text" id="profile-form-name" class="form-input" placeholder="e.g. Dr. Jane Doe" maxlength="100" />
-            <div class="font-mono text-2xs text-muted mt-1" style="font-size: 10px; color: #71717a;">Appears publicly on your approved comments and replies.</div>
+            <div class="form-helper">Appears publicly on your technical discussions and replies.</div>
           </div>
           <div class="form-group">
             <label for="profile-form-email" class="form-label font-mono text-2xs uppercase tracking-widest text-muted">Account Email (Confidential)</label>
             <input type="email" id="profile-form-email" class="form-input" readonly />
-            <div class="font-mono text-2xs text-muted mt-1" style="font-size: 10px; color: #71717a;">* Strictly private. Never displayed on public articles or comment cards.</div>
+            <div class="form-helper">* Strictly private. Never displayed on public articles or comment cards.</div>
           </div>
         </div>
         <div class="form-group mb-3">
           <label for="profile-form-bio" class="form-label font-mono text-2xs uppercase tracking-widest text-muted">Short Biography</label>
           <textarea id="profile-form-bio" class="form-textarea" rows="2" placeholder="Technical focus or systems research background..." maxlength="250"></textarea>
         </div>
-        <div class="d-flex justify-content-between align-items-center pt-2">
+        <div class="profile-form-footer">
           <span class="font-mono text-2xs text-muted" style="font-size: 11px;">Changes persist directly to your verified reader account.</span>
           <button type="button" class="btn btn-primary font-jetbrains" id="profile-btn-save-general">
             Save Profile Changes
@@ -206,7 +206,7 @@
           <!-- Populated dynamically via AUTH_PROVIDERS_CONFIG -->
         </div>
 
-        <div class="p-3 rounded mt-3" style="background: rgba(239, 68, 68, 0.04); border: 1px solid rgba(239, 68, 68, 0.15);">
+        <div class="account-deletion-box">
           <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
             <div>
               <div class="font-jetbrains font-weight-bold text-light" style="font-size: 12.5px; color: #fca5a5;">Server-Side Account Deletion Request</div>
@@ -214,7 +214,7 @@
                 Permanently purge your authenticated credentials and personal identifiers under DPDP Act 2023 / GDPR.
               </div>
             </div>
-            <button type="button" class="btn btn-outline-danger btn-sm font-jetbrains" id="profile-btn-request-deletion" style="color: #f87171; border-color: rgba(239,68,68,0.4);">
+            <button type="button" class="btn btn-outline-danger btn-sm font-jetbrains" id="profile-btn-request-deletion">
               Request Account Deletion
             </button>
           </div>
@@ -286,24 +286,30 @@
     </div>
   </main>
 
-  <!-- Corporate Obsidian Footer -->
-  <footer class="blog-footer">
-    <div class="ambient-glow footer-glow" aria-hidden="true"></div>
-    <div class="container">
-      <div class="footer-grid">
-        <div class="footer-col-brand">
-          <a href="https://greycircuit.tech" class="footer-brand font-display">
-            <img src="assets/logo_transparent.png" alt="" width="24" height="28" decoding="async">
-            <span>GREY CIRCUIT</span>
-          </a>
-          <p class="footer-brand-desc font-jetbrains">
-            Applied Intelligence, Autonomous Systems &amp; Resilient Engineering. Authoritative research published by GreyCircuit Technologies.
+  <!-- Corporate Unified Footer -->
+  <footer class="site-footer-corporate" role="contentinfo">
+    <div class="footer-container">
+      <div class="footer-columns-grid">
+        <!-- Col 1: Brand & Headquarters -->
+        <div class="footer-col footer-col-brand">
+          <div class="footer-brand-header">
+            <img src="assets/logo_transparent.png" alt="GreyCircuit Logo" width="22" height="26" loading="lazy">
+            <span class="footer-brand-title font-space">GREYCIRCUIT</span>
+          </div>
+          <div class="footer-tagline font-jetbrains">Applied Intelligence &amp; Resilient Engineering</div>
+          <p class="footer-desc">
+            Applied Intelligence, Autonomous Systems &amp; Resilient Engineering. Authoritative technical publications and reader control plane by GreyCircuit Technologies.
           </p>
+          <div class="footer-hq-badge font-jetbrains">
+            <span class="footer-dot-green"></span>
+            <span>Bengaluru, Karnataka, India &bull; Reg. CIN: U72900KA2023PTC176543</span>
+          </div>
         </div>
 
-        <div class="footer-col-nav">
-          <span class="footer-heading font-mono text-xs uppercase tracking-widest text-muted">Platform</span>
-          <ul class="footer-links font-jetbrains">
+        <!-- Col 2: Platform -->
+        <div class="footer-col">
+          <h4 class="footer-heading font-jetbrains">01 // PLATFORM</h4>
+          <ul class="footer-nav-list font-inter">
             <li><a href="https://greycircuit.tech">Corporate Home</a></li>
             <li><a href="index.html">Publications Catalog</a></li>
             <li><a href="https://greycircuit.tech#services">Core Capabilities</a></li>
@@ -311,19 +317,21 @@
           </ul>
         </div>
 
-        <div class="footer-col-nav">
-          <span class="footer-heading font-mono text-xs uppercase tracking-widest text-muted">Research Series</span>
-          <ul class="footer-links font-jetbrains">
-            <li><a href="index.html">GCT THREATSCAPE</a></li>
-            <li><a href="index.html">Field Notes</a></li>
-            <li><a href="index.html">Cyber Intelligence</a></li>
-            <li><a href="index.html">Automation &amp; SWE</a></li>
+        <!-- Col 3: Research Series -->
+        <div class="footer-col">
+          <h4 class="footer-heading font-jetbrains">02 // RESEARCH SERIES</h4>
+          <ul class="footer-nav-list font-inter">
+            <li><a href="index.html?series=gct-threatscape">GCT THREATSCAPE</a></li>
+            <li><a href="index.html?series=gct-field-notes">Field Notes</a></li>
+            <li><a href="index.html?series=cybersecurity-intelligence">Cyber Intelligence</a></li>
+            <li><a href="index.html?series=automation-engineering">Automation &amp; SWE</a></li>
           </ul>
         </div>
 
-        <div class="footer-col-nav">
-          <span class="footer-heading font-mono text-xs uppercase tracking-widest text-muted">Governance</span>
-          <ul class="footer-links font-jetbrains">
+        <!-- Col 4: Governance & Status -->
+        <div class="footer-col">
+          <h4 class="footer-heading font-jetbrains">03 // GOVERNANCE</h4>
+          <ul class="footer-nav-list font-inter">
             <li><a href="https://greycircuit.tech#contact">Security Disclosures</a></li>
             <li><a href="https://greycircuit.tech#about">Founder Verification</a></li>
             <li><a href="profile.html">DPDP Act 2023 Portal</a></li>
@@ -335,6 +343,7 @@
         </div>
       </div>
 
+      <!-- Bottom Bar -->
       <div class="footer-bottom-bar font-jetbrains">
         <div class="footer-copy">
           &copy; 2026 GREYCIRCUIT TECHNOLOGIES PRIVATE LIMITED. All rights reserved.
@@ -574,6 +583,21 @@
         });
       }
     });
+
+    // Automatically synchronize profile view when auth state changes or token refreshes
+    window.addEventListener('gct:auth-state-changed', async () => {
+      const client = window.readerClient || window.ReaderClient;
+      if (client && typeof client.initProfilePage === 'function') {
+        await client.initProfilePage();
+      }
+    });
   </script>
+
+  <!-- Floating Back to Top Control -->
+  <button type="button" class="back-to-top" id="btn-back-to-top" aria-label="Back to top" title="Back to top">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polyline points="18 15 12 9 6 15"></polyline>
+    </svg>
+  </button>
 </body>
 </html>

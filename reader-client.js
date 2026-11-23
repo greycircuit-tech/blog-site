@@ -12,7 +12,8 @@
     GUEST_ID: 'gct_guest_identity',
     GUEST_SECRET: 'gct_guest_secret',
     CONSENT: 'gct_privacy_consent_v2026',
-    LIKES_CACHE: 'gct_reader_likes_cache'
+    LIKES_CACHE: 'gct_reader_likes_cache',
+    PROFILE_DRAFT: 'gct_reader_profile_draft'
   };
 
   /**
@@ -41,6 +42,8 @@
       this.session = null;
       this.guest = null;
       this.profile = null;
+      this._isExchangingCode = false;
+      this._isSavingProfile = false;
       this.initPromise = this.init();
     }
 
@@ -48,9 +51,10 @@
       this.initSupabaseClient();
       this.loadStoredSession();
       await this.handleOAuthCallback();
+      await this.ensureSessionSynchronized();
       this.ensureGuestIdentity();
       this.bindGlobalEvents();
-      this.renderNavWidget();
+      this.syncAuthStateAcrossUI();
       this.initConsentBanner();
       this.checkProviderAvailability();
     }
@@ -65,25 +69,46 @@
               storageKey: STORAGE_KEYS.SESSION,
               autoRefreshToken: true,
               persistSession: true,
-              detectSessionInUrl: false
+              detectSessionInUrl: true
             }
           });
 
-          // Sync session state on background refresh or external auth change
-          this.supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+          // Single authoritative listener for all Supabase Auth lifecycle events
+          this.supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('[GCT Auth] onAuthStateChange event:', event, Boolean(session));
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') {
               if (session) {
                 this.session = session;
-                this.renderNavWidget();
+                this.syncAuthStateAcrossUI();
+                this.dispatchAuthChangeEvent(session);
               }
             } else if (event === 'SIGNED_OUT') {
               this.session = null;
-              this.renderNavWidget();
+              this.syncAuthStateAcrossUI();
+              this.dispatchAuthChangeEvent(null);
             }
           });
         }
       } catch (err) {
         console.warn('[GCT Auth] Failed to initialize Supabase client:', err);
+      }
+    }
+
+    async ensureSessionSynchronized() {
+      if (this.supabase?.auth && typeof this.supabase.auth.getSession === 'function') {
+        try {
+          const { data, error } = await this.supabase.auth.getSession();
+          if (data?.session) {
+            this.session = data.session;
+          } else if (!data?.session && this.session) {
+            const nowSec = Math.floor(Date.now() / 1000);
+            if (this.session.expires_at && this.session.expires_at <= nowSec && !this.session.refresh_token) {
+              this.session = null;
+            }
+          }
+        } catch (err) {
+          console.warn('[GCT Auth] Session synchronization notice:', err);
+        }
       }
     }
 
@@ -120,14 +145,20 @@
         const raw = localStorage.getItem(STORAGE_KEYS.SESSION);
         if (raw) {
           const parsed = JSON.parse(raw);
-          // Check expiration
-          if (parsed.expires_at && parsed.expires_at * 1000 > Date.now()) {
+          const nowSec = Math.floor(Date.now() / 1000);
+          // Keep session if not expired OR if refresh_token is present for background refresh
+          if (parsed.expires_at && parsed.expires_at > nowSec) {
+            this.session = parsed;
+          } else if (parsed.refresh_token) {
             this.session = parsed;
           } else {
             localStorage.removeItem(STORAGE_KEYS.SESSION);
+            this.session = null;
           }
         }
-      } catch {}
+      } catch (err) {
+        console.warn('[GCT Auth] Error reading stored session:', err);
+      }
     }
 
     ensureGuestIdentity() {
@@ -163,6 +194,8 @@
     }
 
     async handleOAuthCallback() {
+      if (this._isExchangingCode) return;
+
       const hash = window.location.hash;
       const search = window.location.search;
 
@@ -238,18 +271,23 @@
       if (search && search.includes('code=')) {
         const searchParams = new URLSearchParams(search);
         const authCode = searchParams.get('code');
+        const authFlowId = searchParams.get('sb_flow_id');
         if (authCode) {
+          this._isExchangingCode = true;
           try {
             let session = null;
             let user = null;
 
             if (this.supabase && this.supabase.auth && typeof this.supabase.auth.exchangeCodeForSession === 'function') {
-              const { data, error } = await this.supabase.auth.exchangeCodeForSession(authCode);
+              const exchangeOpts = authFlowId ? { flowId: authFlowId } : undefined;
+              const { data, error } = await this.supabase.auth.exchangeCodeForSession(authCode, exchangeOpts);
               if (error) {
                 console.warn('[GCT Auth] PKCE exchangeCodeForSession returned error:', error);
                 const lower = (error.message || '').toLowerCase();
                 if (lower.includes('signup') || lower.includes('not allowed') || lower.includes('disabled')) {
                   this.showToast('Public reader registration is currently closed. Only pre-authorized accounts may sign in.', 'warning');
+                } else if (lower.includes('verifier not found') || lower.includes('missing')) {
+                  this.showToast('Authentication session could not be verified. Please sign in again.', 'warning');
                 } else {
                   this.showToast(`Authentication notice: ${error.message || 'Authorization code exchange failed.'}`, 'warning');
                 }
@@ -260,16 +298,33 @@
             } else {
               // Direct endpoint fallback for PKCE exchange if SDK is not present
               const cfg = window.__GCT_CONFIG__ || {};
-              let codeVerifier = localStorage.getItem(`${STORAGE_KEYS.SESSION}-code-verifier`);
-              if (!codeVerifier) {
+              let rawVerifier = null;
+              if (authFlowId) {
+                rawVerifier = localStorage.getItem(`${STORAGE_KEYS.SESSION}-flow-${authFlowId}-code-verifier`);
+              }
+              if (!rawVerifier) {
+                rawVerifier = localStorage.getItem(`${STORAGE_KEYS.SESSION}-code-verifier`);
+              }
+              if (!rawVerifier) {
                 for (let i = 0; i < localStorage.length; i++) {
                   const key = localStorage.key(i);
                   if (key && key.startsWith(STORAGE_KEYS.SESSION) && key.endsWith('-code-verifier')) {
-                    codeVerifier = localStorage.getItem(key);
+                    rawVerifier = localStorage.getItem(key);
                     break;
                   }
                 }
               }
+
+              let codeVerifier = null;
+              if (rawVerifier) {
+                try {
+                  const parsed = JSON.parse(rawVerifier);
+                  codeVerifier = typeof parsed === 'string' ? parsed : rawVerifier;
+                } catch {
+                  codeVerifier = rawVerifier;
+                }
+              }
+
               if (codeVerifier && cfg.supabaseUrl && cfg.anonKey) {
                 const exchangeRes = await fetch(`${cfg.supabaseUrl}/auth/v1/token?grant_type=pkce`, {
                   method: 'POST',
@@ -296,19 +351,23 @@
               }
             }
 
+            // Clean address bar AFTER code exchange attempt, preserving slug and other non-auth parameters
+            searchParams.delete('code');
+            searchParams.delete('state');
+            searchParams.delete('sb_flow_id');
+            const remaining = searchParams.toString();
+            const cleanUrl = window.location.pathname + (remaining ? `?${remaining}` : '') + (window.location.hash || '');
+            window.history.replaceState({}, document.title, cleanUrl);
+
             if (session) {
               this.session = session;
               localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(session));
 
-              // Clean address bar preserving existing query parameters (such as ?slug=...)
-              searchParams.delete('code');
-              searchParams.delete('state');
-              const remaining = searchParams.toString();
-              const cleanUrl = window.location.pathname + (remaining ? `?${remaining}` : '') + (window.location.hash || '');
-              window.history.replaceState({}, document.title, cleanUrl);
-
               const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email || 'Reader';
-              this.showToast(`Signed in successfully as ${displayName}.`, 'success');
+              this.showToast(`Signed in successfully as ${this.escape(displayName)}.`, 'success');
+
+              this.syncAuthStateAcrossUI();
+              this.dispatchAuthChangeEvent(session);
 
               // Restore scroll position if saved
               try {
@@ -339,17 +398,12 @@
                 }
               } catch {}
               return;
-            } else {
-              // Clean code and state from address bar on exchange failure
-              searchParams.delete('code');
-              searchParams.delete('state');
-              const remaining = searchParams.toString();
-              const cleanUrl = window.location.pathname + (remaining ? `?${remaining}` : '') + (window.location.hash || '');
-              window.history.replaceState({}, document.title, cleanUrl);
             }
           } catch (err) {
             console.warn('[GCT Auth] Error processing PKCE callback:', err);
             this.showToast('Unable to complete PKCE authentication. Please try again.', 'error');
+          } finally {
+            this._isExchangingCode = false;
           }
           return;
         }
@@ -391,7 +445,11 @@
               const cleanUrl = window.location.pathname + window.location.search;
               window.history.replaceState({}, document.title, cleanUrl);
 
-              this.showToast(`Signed in successfully as ${user.user_metadata?.full_name || user.email}.`, 'success');
+              const displayName = user.user_metadata?.full_name || user.email;
+              this.showToast(`Signed in successfully as ${this.escape(displayName)}.`, 'success');
+
+              this.syncAuthStateAcrossUI();
+              this.dispatchAuthChangeEvent(this.session);
 
               // Restore scroll position if saved
               try {
@@ -444,14 +502,22 @@
         const meta = u.user_metadata || {};
         const fullName = meta.full_name || meta.name || u.email?.split('@')[0] || 'Authenticated Reader';
         const firstName = meta.given_name || fullName.split(' ')[0] || 'Reader';
+
+        let safeAvatarUrl = null;
+        const rawAvatar = meta.avatar_url || meta.picture || null;
+        if (typeof rawAvatar === 'string' && rawAvatar.startsWith('https://')) {
+          safeAvatarUrl = rawAvatar;
+        }
+
         return {
           isAuthenticated: true,
           isGuest: false,
           userId: u.id,
           email: u.email || '',
-          displayName: fullName,
-          firstName: firstName,
-          avatarUrl: meta.avatar_url || meta.picture || null,
+          workEmail: u.email || '',
+          displayName: this.escape(fullName),
+          firstName: this.escape(firstName),
+          avatarUrl: safeAvatarUrl,
           provider: u.app_metadata?.provider || 'google'
         };
       }
@@ -460,33 +526,35 @@
         isAuthenticated: false,
         isGuest: true,
         userId: this.guest?.id || 'guest',
+        guestSecret: this.guest?.secret || '',
         email: this.guest?.email || '',
-        displayName: this.guest?.name || 'Guest Reader',
-        firstName: (this.guest?.name || 'Guest').split(' ')[0] || 'Guest',
+        workEmail: this.guest?.email || '',
+        displayName: this.escape(this.guest?.name || 'Guest Reader'),
+        firstName: this.escape((this.guest?.name || 'Guest').split(' ')[0] || 'Guest'),
         avatarUrl: null,
         provider: 'guest'
       };
     }
 
     async getValidatedIdentity() {
+      // Always consult Supabase SDK session first if available
+      if (this.supabase && this.supabase.auth && typeof this.supabase.auth.getSession === 'function') {
+        try {
+          const { data, error } = await this.supabase.auth.getSession();
+          if (data && data.session) {
+            this.session = data.session;
+            return this.getIdentity();
+          }
+        } catch (sdkErr) {
+          console.warn('[GCT Auth] SDK getSession refresh notice:', sdkErr);
+        }
+      }
+
       // Validate or refresh session against Supabase Auth
       if (this.session) {
         const nowSec = Math.floor(Date.now() / 1000);
         // If expired or expiring within 30 seconds
         if (this.session.expires_at && (this.session.expires_at - nowSec <= 30)) {
-          if (this.supabase && this.supabase.auth && typeof this.supabase.auth.getSession === 'function') {
-            try {
-              const { data, error } = await this.supabase.auth.getSession();
-              if (data?.session) {
-                this.session = data.session;
-                this.renderNavWidget();
-                return this.getIdentity();
-              }
-            } catch (sdkErr) {
-              console.warn('[GCT Auth] SDK getSession refresh notice:', sdkErr);
-            }
-          }
-
           if (this.session.refresh_token) {
             const cfg = window.__GCT_CONFIG__ || {};
             if (cfg.supabaseUrl && cfg.anonKey) {
@@ -507,13 +575,13 @@
                   this.session.expires_at = Math.floor(Date.now() / 1000) + data.expires_in;
                   if (data.user) this.session.user = data.user;
                   localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(this.session));
-                  this.renderNavWidget();
+                  this.syncAuthStateAcrossUI();
                   return this.getIdentity();
                 } else {
                   console.warn('[GCT Auth] Session refresh rejected, falling back to guest');
                   localStorage.removeItem(STORAGE_KEYS.SESSION);
                   this.session = null;
-                  this.renderNavWidget();
+                  this.syncAuthStateAcrossUI();
                 }
               } catch (err) {
                 console.warn('[GCT Auth] Session refresh network error:', err);
@@ -522,7 +590,7 @@
           } else {
             localStorage.removeItem(STORAGE_KEYS.SESSION);
             this.session = null;
-            this.renderNavWidget();
+            this.syncAuthStateAcrossUI();
           }
         } else {
           return this.getIdentity();
@@ -537,8 +605,19 @@
      * ---------------------------------------------------------------------- */
     buildValidatedRedirectUrl(rawCandidateUrl) {
       try {
+        if (!rawCandidateUrl || typeof rawCandidateUrl !== 'string') {
+          return window.location.href;
+        }
+
+        const trimmed = rawCandidateUrl.trim();
+        // Reject protocol-relative URLs (//evil.com), javascript:, data:, vbscript:
+        if (trimmed.startsWith('//') || trimmed.toLowerCase().startsWith('javascript:') || trimmed.toLowerCase().startsWith('data:')) {
+          console.warn('[GCT Auth] Unsafe redirect URL pattern rejected:', rawCandidateUrl);
+          return window.location.href;
+        }
+
         // 1. Resolve relative URLs against current page URL
-        const resolved = new URL(rawCandidateUrl || window.location.href, window.location.href);
+        const resolved = new URL(trimmed, window.location.href);
 
         // 2. Validate approved origin and transport security
         const currentHost = window.location.hostname.toLowerCase();
@@ -632,12 +711,67 @@
           }
         }
         localStorage.removeItem(STORAGE_KEYS.SESSION);
+        localStorage.removeItem(STORAGE_KEYS.PROFILE_DRAFT);
+        localStorage.removeItem('gct_reader_bio');
         this.session = null;
-        this.renderNavWidget();
+        this.profile = null;
+        this.syncAuthStateAcrossUI();
+        this.dispatchAuthChangeEvent(null);
         this.showToast('Signed out. You are now participating in Guest Mode.', 'info');
-        setTimeout(() => window.location.reload(), 800);
+
+        // If on profile page, re-render guest view immediately without forcing a jarring hard reload
+        const currentPath = (typeof window !== 'undefined' && window.location?.pathname) || '';
+        const isProfilePage = currentPath.endsWith('profile.html') ||
+                              Boolean(document.getElementById('profile-guest-view'));
+        if (isProfilePage) {
+          this.initProfilePage();
+        } else {
+          setTimeout(() => window.location.reload(), 800);
+        }
       } catch (err) {
         console.error('[GCT Auth] Sign out error:', err);
+      }
+    }
+
+    dispatchAuthChangeEvent(session) {
+      try {
+        const ident = this.getIdentity();
+        window.dispatchEvent(new CustomEvent('gct:auth-state-changed', {
+          detail: { session, identity: ident }
+        }));
+      } catch (e) {
+        console.warn('[GCT Auth] dispatchAuthChangeEvent notice:', e);
+      }
+    }
+
+    syncAuthStateAcrossUI() {
+      // 1. Always update stationary nav widget
+      this.renderNavWidget();
+
+      // 2. If on profile page, update profile views
+      const currentPath = (typeof window !== 'undefined' && window.location?.pathname) || '';
+      const isProfilePage = currentPath.endsWith('profile.html') ||
+                            Boolean(document.getElementById('profile-authenticated-view'));
+      if (isProfilePage && typeof this.initProfilePage === 'function') {
+        this.initProfilePage();
+      }
+
+      // 3. If profile modal is open, re-render modal content
+      const modal = document.getElementById('reader-profile-modal');
+      if (modal && modal.classList && typeof modal.classList.contains === 'function' && modal.classList.contains('is-open')) {
+        this.populateModalFields();
+        this.renderAuthProviders();
+      }
+
+      // 4. If comment form exists, prefill name and email for authenticated user
+      const commentNameInput = document.getElementById('comment-author-name');
+      const commentEmailInput = document.getElementById('comment-author-email');
+      if (commentNameInput || commentEmailInput) {
+        const ident = this.getIdentity();
+        if (ident.isAuthenticated) {
+          if (commentNameInput && !commentNameInput.value) commentNameInput.value = ident.displayName;
+          if (commentEmailInput && !commentEmailInput.value) commentEmailInput.value = ident.email;
+        }
       }
     }
 
@@ -655,10 +789,10 @@
 
       if (avatarWrap) {
         if (ident.isAuthenticated && ident.avatarUrl) {
-          avatarWrap.innerHTML = `<img src="${ident.avatarUrl}" alt="${ident.displayName}" class="nav-user-avatar-img" />`;
+          avatarWrap.innerHTML = `<img src="${this.escape(ident.avatarUrl)}" alt="${this.escape(ident.displayName)}" class="nav-user-avatar-img" />`;
         } else if (ident.isAuthenticated) {
-          const initials = ident.displayName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
-          avatarWrap.innerHTML = `<span class="nav-avatar-initials font-jetbrains" style="font-size: 13px; font-weight: 700;">${initials}</span>`;
+          const initials = (ident.displayName || 'Reader').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+          avatarWrap.innerHTML = `<span class="nav-avatar-initials font-jetbrains" style="font-size: 13px; font-weight: 700;">${this.escape(initials)}</span>`;
         } else {
           avatarWrap.innerHTML = `
             <svg class="profile-avatar-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -842,44 +976,170 @@
     }
 
     async saveProfile() {
-      const nameInp = document.getElementById('modal-profile-name');
-      const bioInp = document.getElementById('modal-profile-bio');
+      if (this._isSavingProfile) {
+        console.warn('[GCT Auth] Modal save already in progress, ignoring duplicate submission.');
+        return;
+      }
+      this._isSavingProfile = true;
 
-      const newName = nameInp?.value.trim();
-      const newBio = bioInp?.value.trim();
+      try {
+        const nameInp = document.getElementById('modal-profile-name');
+        const bioInp = document.getElementById('modal-profile-bio');
 
-      if (newName) {
+        const newName = nameInp?.value.trim();
+        const newBio = bioInp?.value.trim() || '';
+
+        if (!newName) {
+          this.showToast('Display name cannot be empty.', 'error');
+          return;
+        }
+        if (newName.length > 100) {
+          this.showToast('Display name cannot exceed 100 characters.', 'error');
+          return;
+        }
+        if (newBio.length > 250) {
+          this.showToast('Biography cannot exceed 250 characters.', 'error');
+          return;
+        }
+
         if (this.session?.user) {
-          this.session.user.user_metadata = this.session.user.user_metadata || {};
-          this.session.user.user_metadata.full_name = newName;
-          localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(this.session));
+          const nowSec = Math.floor(Date.now() / 1000);
+          if (this.session.expires_at && (this.session.expires_at <= nowSec)) {
+            this.saveProfileDraftSafely(this.session.user.id, newName, newBio, 'session_expired');
+            this.showToast('Your session has expired. Please sign in again to save changes.', 'error');
+            return;
+          }
 
-          // Attempt server-side user metadata update
-          const cfg = window.__GCT_CONFIG__ || {};
-          if (this.session?.access_token && cfg.supabaseUrl && cfg.anonKey) {
+          // Pre-retry / pre-save cloud conflict check against remote updates
+          const existingDraft = this.getValidatedProfileDraft(this.session.user.id);
+          if (existingDraft && this.supabase) {
             try {
-              await fetch(`${cfg.supabaseUrl}/auth/v1/user`, {
-                method: 'PUT',
-                headers: {
-                  apikey: cfg.anonKey,
-                  Authorization: `Bearer ${this.session.access_token}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                  data: { full_name: newName, bio: newBio }
+              const { data: latestCloud, error: fetchErr } = await this.supabase
+                .from('profiles')
+                .select('updated_at')
+                .eq('id', this.session.user.id)
+                .maybeSingle();
+
+              if (!fetchErr && latestCloud?.updated_at) {
+                const cloudTime = new Date(latestCloud.updated_at).getTime();
+                if (cloudTime > existingDraft.timestamp) {
+                  console.warn('[GCT Auth] Modal save detected newer cloud profile than local draft; aborting overwrite.');
+                  this.showToast('Cloud profile was updated on another device. Please refresh to view latest changes.', 'error');
+                  return;
+                }
+              }
+            } catch (fetchEx) {
+              console.warn('[GCT Auth] Pre-save cloud conflict check notice:', fetchEx?.message);
+            }
+          }
+
+          let dbPersisted = false;
+          let dbErrorMessage = null;
+
+          if (this.supabase && this.session.user.id) {
+            try {
+              const nowIso = new Date().toISOString();
+              let dbErr = null;
+              const { data: updatedRows, error: updateErr } = await this.supabase
+                .from('profiles')
+                .update({
+                  display_name: newName,
+                  bio: newBio,
+                  updated_at: nowIso
                 })
-              });
+                .eq('id', this.session.user.id)
+                .select('id');
+
+              if (updateErr) {
+                dbErr = updateErr;
+              } else if (!updatedRows || updatedRows.length === 0) {
+                const { error: insertErr } = await this.supabase
+                  .from('profiles')
+                  .insert({
+                    id: this.session.user.id,
+                    display_name: newName,
+                    bio: newBio,
+                    updated_at: nowIso
+                  });
+                if (insertErr) dbErr = insertErr;
+              }
+
+              if (dbErr) {
+                console.error('[GCT Auth] Modal profile db upsert error:', {
+                  code: dbErr.code,
+                  message: dbErr.message,
+                  status: dbErr.status || dbErr.statusCode
+                });
+                if (dbErr.code === '42501' || dbErr.status === 401 || dbErr.status === 403) {
+                  dbErrorMessage = 'Access denied: Database security policy prevented saving your profile.';
+                } else {
+                  dbErrorMessage = `Database error (${dbErr.code || 'sync_failed'}): ${dbErr.message || 'Unable to persist profile.'}`;
+                }
+              } else {
+                dbPersisted = true;
+                this.profile = {
+                  ...(this.profile || {}),
+                  id: this.session.user.id,
+                  display_name: newName,
+                  bio: newBio,
+                  updated_at: nowIso
+                };
+              }
+            } catch (dbEx) {
+              console.error('[GCT Auth] Modal profile db upsert exception:', { message: dbEx?.message });
+              dbErrorMessage = 'Network error: Unable to connect to database. Changes not saved.';
+            }
+          } else {
+            dbErrorMessage = 'Database client is not available.';
+          }
+
+          if (dbPersisted) {
+            try {
+              localStorage.setItem('gct_reader_bio', newBio);
+              localStorage.removeItem(STORAGE_KEYS.PROFILE_DRAFT);
             } catch {}
+
+            this.session.user.user_metadata = this.session.user.user_metadata || {};
+            this.session.user.user_metadata.full_name = newName;
+            this.session.user.user_metadata.bio = newBio;
+            localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(this.session));
+
+            const cfg = window.__GCT_CONFIG__ || {};
+            if (this.session?.access_token && cfg.supabaseUrl && cfg.anonKey) {
+              try {
+                await fetch(`${cfg.supabaseUrl}/auth/v1/user`, {
+                  method: 'PUT',
+                  headers: {
+                    apikey: cfg.anonKey,
+                    Authorization: `Bearer ${this.session.access_token}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    data: { full_name: newName, bio: newBio }
+                  })
+                });
+              } catch {}
+            }
+
+            this.renderNavWidget();
+            this.showToast('Profile saved directly to database.', 'success');
+            this.closeProfileModal();
+          } else {
+            this.saveProfileDraftSafely(this.session.user.id, newName, newBio, dbErrorMessage);
+            this.showToast(dbErrorMessage || 'Database synchronization failed. Changes not saved.', 'error');
           }
         } else {
-          this.guest.name = newName;
-          localStorage.setItem('gct_guest_saved_name', newName);
+          if (this.guest) {
+            this.guest.name = newName;
+            localStorage.setItem('gct_guest_saved_name', newName);
+          }
+          if (newBio) localStorage.setItem('gct_reader_bio', newBio);
+          this.renderNavWidget();
+          this.showToast('Guest profile preferences updated.', 'success');
+          this.closeProfileModal();
         }
-        if (newBio) localStorage.setItem('gct_reader_bio', newBio);
-
-        this.renderNavWidget();
-        this.showToast('Profile preferences updated.', 'success');
-        this.closeProfileModal();
+      } finally {
+        this._isSavingProfile = false;
       }
     }
 
@@ -1002,6 +1262,7 @@
         localStorage.removeItem(STORAGE_KEYS.GUEST_ID);
         localStorage.removeItem(STORAGE_KEYS.GUEST_SECRET);
         localStorage.removeItem('gct_user_comments_history');
+        localStorage.removeItem(STORAGE_KEYS.PROFILE_DRAFT);
         localStorage.removeItem('gct_reader_bio');
         localStorage.removeItem('gct_guest_saved_name');
         localStorage.removeItem('gct_user_fp');
@@ -1114,17 +1375,67 @@
       const ident = await this.getValidatedIdentity();
 
       if (ident.isAuthenticated) {
-        authView.style.display = 'block';
-        guestView.style.display = 'none';
+        if (authView.style) authView.style.display = 'block';
+        if (guestView.style) guestView.style.display = 'none';
 
-        // Profile Overview
+        // 1. Authoritative Database Profile Retrieval (public.profiles)
+        let dbProfile = null;
+        if (this.supabase && this.session?.user?.id) {
+          try {
+            const { data, error } = await this.supabase
+              .from('profiles')
+              .select('id, display_name, bio, avatar_url, updated_at')
+              .eq('id', this.session.user.id)
+              .maybeSingle();
+            if (!error && data) {
+              dbProfile = data;
+              this.profile = data;
+              if (typeof data.bio === 'string') {
+                try { localStorage.setItem('gct_reader_bio', data.bio); } catch {}
+              }
+            } else if (error) {
+              console.warn('[GCT Auth] Database profile query error:', { code: error.code, message: error.message });
+            }
+          } catch (e) {
+            console.warn('[GCT Auth] Database profile query exception:', { message: e?.message });
+          }
+        }
+
+        // 2. Check for unsynced local draft with strict validation and user isolation
+        const localDraft = this.getValidatedProfileDraft(this.session?.user?.id);
+
+        // 3. Resolve authoritative cloud values vs unsynced draft
+        const cloudDisplayName = dbProfile?.display_name || ident.displayName;
+        const cloudBio = dbProfile?.bio ?? '';
+        const effectiveAvatarUrl = dbProfile?.avatar_url || ident.avatarUrl;
+
+        let initialName = cloudDisplayName;
+        let initialBio = cloudBio;
+        let hasUnsyncedDraft = false;
+
+        if (localDraft) {
+          const cloudTime = dbProfile?.updated_at ? new Date(dbProfile.updated_at).getTime() : 0;
+          if (localDraft.timestamp > cloudTime) {
+            // Group B.10: Draft is newer than cloud profile -> restore into form inputs
+            if (localDraft.name) initialName = localDraft.name;
+            if (typeof localDraft.bio === 'string') initialBio = localDraft.bio;
+            hasUnsyncedDraft = true;
+          } else {
+            // Group B.9: Draft is older or equal -> discard stale draft, load cloud profile
+            try { localStorage.removeItem(STORAGE_KEYS.PROFILE_DRAFT); } catch {}
+          }
+        } else if (!dbProfile && localStorage.getItem('gct_reader_bio')) {
+          initialBio = localStorage.getItem('gct_reader_bio') || '';
+        }
+
+        // Profile Overview (authoritative cloud values)
         const nameEl = document.getElementById('overview-display-name');
         const emailEl = document.getElementById('overview-email');
         const avatarEl = document.getElementById('profile-avatar-large');
 
         if (nameEl) {
           nameEl.innerHTML = `
-            <span>${this.escape(ident.displayName)}</span>
+            <span>${this.escape(cloudDisplayName)}</span>
             <span class="badge bg-success font-jetbrains" id="overview-status-badge" style="font-size: 11px; padding: 4px 8px;">
               ● Google Verified
             </span>
@@ -1132,11 +1443,11 @@
         }
         if (emailEl) emailEl.textContent = ident.email;
         if (avatarEl) {
-          if (ident.avatarUrl) {
-            avatarEl.innerHTML = `<img src="${ident.avatarUrl}" alt="${ident.displayName}" />`;
+          if (effectiveAvatarUrl) {
+            avatarEl.innerHTML = `<img src="${this.escape(effectiveAvatarUrl)}" alt="${this.escape(cloudDisplayName)}" />`;
           } else {
-            const initials = ident.displayName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
-            avatarEl.innerHTML = `<span class="font-jetbrains" style="font-size: 24px; font-weight: 700;">${initials}</span>`;
+            const initials = (cloudDisplayName || 'Reader').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+            avatarEl.innerHTML = `<span class="font-jetbrains" style="font-size: 24px; font-weight: 700;">${this.escape(initials)}</span>`;
           }
         }
 
@@ -1145,64 +1456,216 @@
         const formEmail = document.getElementById('profile-form-email');
         const formBio = document.getElementById('profile-form-bio');
 
-        if (formName) formName.value = ident.displayName;
+        if (formName) formName.value = initialName;
         if (formEmail) formEmail.value = ident.email;
-        if (formBio) formBio.value = localStorage.getItem('gct_reader_bio') || '';
+        if (formBio) formBio.value = initialBio;
 
         const saveGeneralBtn = document.getElementById('profile-btn-save-general');
         if (saveGeneralBtn) {
+          if (hasUnsyncedDraft) {
+            saveGeneralBtn.textContent = 'Sync Changes to Cloud';
+            this.showToast('Restored unsynced local draft. Click "Sync Changes to Cloud" to save.', 'info');
+          } else {
+            saveGeneralBtn.textContent = 'Save Profile Changes';
+          }
+
           saveGeneralBtn.onclick = async () => {
-            const newName = formName?.value.trim();
-            const newBio = formBio?.value.trim();
-            if (!newName) {
-              this.showToast('Display name cannot be empty.', 'error');
+            if (this._isSavingProfile) {
+              console.warn('[GCT Auth] Save already in progress, ignoring duplicate submission.');
               return;
             }
-
-            saveGeneralBtn.disabled = true;
-            saveGeneralBtn.textContent = 'Saving...';
+            this._isSavingProfile = true;
 
             try {
-              const cfg = window.__GCT_CONFIG__ || {};
-              if (this.session?.access_token && cfg.supabaseUrl && cfg.anonKey) {
-                const patchRes = await fetch(`${cfg.supabaseUrl}/auth/v1/user`, {
-                  method: 'PUT',
-                  headers: {
-                    apikey: cfg.anonKey,
-                    Authorization: `Bearer ${this.session.access_token}`,
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    data: { full_name: newName, bio: newBio }
-                  })
-                });
+              const newName = formName?.value.trim();
+              const newBio = formBio?.value.trim() || '';
+              if (!newName) {
+                this.showToast('Display name cannot be empty.', 'error');
+                return;
+              }
+              if (newName.length > 100) {
+                this.showToast('Display name cannot exceed 100 characters.', 'error');
+                return;
+              }
+              if (newBio.length > 250) {
+                this.showToast('Biography cannot exceed 250 characters.', 'error');
+                return;
+              }
 
-                if (patchRes.ok) {
-                  const updatedUser = await patchRes.json();
-                  if (this.session) {
-                    this.session.user = updatedUser;
-                    localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(this.session));
+              // Session check
+              if (!this.session || !this.session.user?.id) {
+                this.showToast('Authentication required. Please sign in to save your profile.', 'error');
+                return;
+              }
+
+              const nowSec = Math.floor(Date.now() / 1000);
+              if (this.session.expires_at && (this.session.expires_at <= nowSec)) {
+                this.saveProfileDraftSafely(this.session.user.id, newName, newBio, 'session_expired');
+                this.showToast('Your session has expired. Please sign in again to save your profile.', 'error');
+                saveGeneralBtn.textContent = 'Retry Save Changes';
+                return;
+              }
+
+              // Pre-retry / pre-save cloud conflict check against remote updates
+              const existingDraft = this.getValidatedProfileDraft(this.session.user.id);
+              if (existingDraft && this.supabase) {
+                try {
+                  const { data: latestCloud, error: fetchErr } = await this.supabase
+                    .from('profiles')
+                    .select('updated_at')
+                    .eq('id', this.session.user.id)
+                    .maybeSingle();
+
+                  if (!fetchErr && latestCloud?.updated_at) {
+                    const cloudTime = new Date(latestCloud.updated_at).getTime();
+                    if (cloudTime > existingDraft.timestamp) {
+                      console.warn('[GCT Auth] Cloud profile is newer than local draft. Aborting overwrite.');
+                      this.showToast('Cloud profile was updated on another device. Please refresh before saving.', 'error');
+                      saveGeneralBtn.textContent = 'Refresh to View Latest';
+                      saveGeneralBtn.onclick = () => window.location.reload();
+                      return;
+                    }
                   }
+                } catch (fetchEx) {
+                  console.warn('[GCT Auth] Pre-save cloud re-fetch notice:', fetchEx?.message);
                 }
               }
 
-              if (newBio) localStorage.setItem('gct_reader_bio', newBio);
-              this.renderNavWidget();
-              if (nameEl) {
-                nameEl.innerHTML = `
-                  <span>${this.escape(newName)}</span>
-                  <span class="badge bg-success font-jetbrains" id="overview-status-badge" style="font-size: 11px; padding: 4px 8px;">
-                    ● Google Verified
-                  </span>
-                `;
+              saveGeneralBtn.disabled = true;
+              saveGeneralBtn.textContent = 'Saving to Database...';
+
+              let dbPersisted = false;
+              let dbErrorMessage = null;
+
+              try {
+                if (this.supabase) {
+                  const nowIso = new Date().toISOString();
+                  let dbErr = null;
+                  const { data: updatedRows, error: updateErr } = await this.supabase
+                    .from('profiles')
+                    .update({
+                      display_name: newName,
+                      bio: newBio,
+                      updated_at: nowIso
+                    })
+                    .eq('id', this.session.user.id)
+                    .select('id');
+
+                  if (updateErr) {
+                    dbErr = updateErr;
+                  } else if (!updatedRows || updatedRows.length === 0) {
+                    const { error: insertErr } = await this.supabase
+                      .from('profiles')
+                      .insert({
+                        id: this.session.user.id,
+                        display_name: newName,
+                        bio: newBio,
+                        updated_at: nowIso
+                      });
+                    if (insertErr) dbErr = insertErr;
+                  }
+
+                  if (dbErr) {
+                    console.error('[GCT Auth] Database profile write rejected:', {
+                      code: dbErr.code,
+                      message: dbErr.message,
+                      status: dbErr.status || dbErr.statusCode
+                    });
+
+                    if (dbErr.code === '42501' || dbErr.status === 401 || dbErr.status === 403) {
+                      dbErrorMessage = 'Access denied: Database security policy prevented saving your profile.';
+                    } else {
+                      dbErrorMessage = `Database error (${dbErr.code || 'sync_failed'}): ${dbErr.message || 'Unable to persist profile.'}`;
+                    }
+                  } else {
+                    dbPersisted = true;
+                    this.profile = {
+                      ...(this.profile || {}),
+                      id: this.session.user.id,
+                      display_name: newName,
+                      bio: newBio,
+                      updated_at: nowIso
+                    };
+                  }
+                } else {
+                  dbErrorMessage = 'Database client is not available.';
+                }
+              } catch (err) {
+                console.error('[GCT Auth] Network or unexpected exception during database save:', {
+                  name: err?.name,
+                  message: err?.message
+                });
+                dbErrorMessage = 'Network error: Unable to connect to the database. Changes not saved to cloud.';
               }
-              this.showToast('Profile updated successfully.', 'success');
-            } catch (err) {
-              console.warn('[GCT Auth] Error saving profile to server:', err);
-              this.showToast('Profile saved locally.', 'info');
+
+              if (dbPersisted) {
+                // 1. Clear unsynced draft
+                try {
+                  localStorage.removeItem(STORAGE_KEYS.PROFILE_DRAFT);
+                } catch {}
+
+                // 2. Update local cache ONLY after confirmed DB persistence
+                try {
+                  localStorage.setItem('gct_reader_bio', newBio);
+                } catch {}
+
+                // 3. Auth metadata coherence sync (non-fatal)
+                const cfg = window.__GCT_CONFIG__ || {};
+                if (this.session?.access_token && cfg.supabaseUrl && cfg.anonKey) {
+                  try {
+                    const patchRes = await fetch(`${cfg.supabaseUrl}/auth/v1/user`, {
+                      method: 'PUT',
+                      headers: {
+                        apikey: cfg.anonKey,
+                        Authorization: `Bearer ${this.session.access_token}`,
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({
+                        data: { full_name: newName, bio: newBio }
+                      })
+                    });
+
+                    if (patchRes.ok) {
+                      const updatedUser = await patchRes.json();
+                      if (this.session) {
+                        this.session.user = updatedUser;
+                        localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(this.session));
+                      }
+                    }
+                  } catch (metaErr) {
+                    console.warn('[GCT Auth] Metadata sync notice (non-fatal):', metaErr?.message);
+                  }
+                }
+
+                // 4. Update Overview display name and Nav capsule
+                if (nameEl) {
+                  nameEl.innerHTML = `
+                    <span>${this.escape(newName)}</span>
+                    <span class="badge bg-success font-jetbrains" id="overview-status-badge" style="font-size: 11px; padding: 4px 8px;">
+                      ● Google Verified
+                    </span>
+                  `;
+                }
+                this.renderNavWidget();
+
+                // 5. Explicit cloud-save success toast
+                this.showToast('Profile saved directly to database.', 'success');
+                saveGeneralBtn.textContent = 'Save Profile Changes';
+              } else {
+                // FAILED DATABASE WRITE
+                // 1. NEVER display success toast
+                // 2. Preserve entered values in DOM and in local draft safely
+                this.saveProfileDraftSafely(this.session.user.id, newName, newBio, dbErrorMessage);
+
+                // 3. Explicit database synchronization error toast
+                this.showToast(dbErrorMessage || 'Database synchronization failed. Changes not saved to cloud.', 'error');
+
+                // 4. Reset button to allow retry
+                saveGeneralBtn.textContent = 'Retry Save Changes';
+              }
             } finally {
-              saveGeneralBtn.disabled = false;
-              saveGeneralBtn.textContent = 'Save Profile Changes';
+              this._isSavingProfile = false;
+              if (saveGeneralBtn) saveGeneralBtn.disabled = false;
             }
           };
         }
@@ -1213,29 +1676,20 @@
           provContainer.innerHTML = `
             <div class="auth-provider-card auth-provider-connected">
               <div class="d-flex align-items-center gap-3">
-                <span class="provider-icon-wrap" style="display:flex; align-items:center;">
-                  <svg width="22" height="22" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+                <span class="provider-icon-wrap" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
                 </span>
                 <div>
-                  <div class="auth-provider-title font-jetbrains" style="font-size: 13px; font-weight: 600; color: #fff;">Google Federated Identity</div>
-                  <div class="auth-provider-status font-mono" style="font-size: 11px; color: #34d399;">Connected as ${this.escape(ident.email)} (Verified)</div>
+                  <div class="auth-provider-title font-jetbrains">Google Federated Identity</div>
+                  <div class="auth-provider-status font-jetbrains">
+                    <span class="provider-status-dot"></span>
+                    <span>Connected as ${this.escape(ident.email)} &bull; Verified</span>
+                  </div>
                 </div>
               </div>
-              <button type="button" class="btn btn-secondary btn-sm font-jetbrains" id="profile-btn-prov-signout" style="font-size: 11px; padding: 6px 14px; color: #fca5a5; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08);">
+              <button type="button" class="btn btn-secondary btn-sm font-jetbrains profile-btn-prov-signout" id="profile-btn-prov-signout">
                 Sign Out
               </button>
-            </div>
-            <div class="auth-provider-card auth-provider-disabled" style="opacity: 0.6; margin-top: 8px;">
-              <div class="d-flex align-items-center gap-3">
-                <span class="provider-icon-wrap" style="display:flex; align-items:center;">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
-                </span>
-                <div>
-                  <div class="auth-provider-title font-jetbrains" style="font-size: 13px; font-weight: 600; color: #a1a1aa;">GitHub Developer Identity</div>
-                  <div class="auth-provider-status font-jetbrains" style="font-size: 11px; color: #71717a;">Extensible provider registration in progress</div>
-                </div>
-              </div>
-              <span class="badge bg-secondary font-jetbrains" style="font-size: 10px; background: rgba(255,255,255,0.08) !important; color: #71717a;">Planned</span>
             </div>
           `;
 
@@ -1259,8 +1713,8 @@
 
       } else {
         // Guest mode view
-        authView.style.display = 'none';
-        guestView.style.display = 'block';
+        if (authView.style) authView.style.display = 'none';
+        if (guestView.style) guestView.style.display = 'block';
 
         const guestSigninBtn = document.getElementById('btn-profile-guest-signin');
         if (guestSigninBtn) {
@@ -1391,7 +1845,8 @@
         try {
           const ident = await this.getValidatedIdentity();
           if (ident.isAuthenticated) {
-            const isProfilePage = window.location.pathname.endsWith('profile.html');
+            const currentPath = (typeof window !== 'undefined' && window.location?.pathname) || '';
+            const isProfilePage = currentPath.endsWith('profile.html');
             if (!isProfilePage) {
               window.location.href = 'profile.html';
             }
@@ -1459,6 +1914,96 @@
         this.saveConsent('reject_optional');
         this.closeCookiePreferences();
       });
+    }
+
+    /**
+     * Rigorous validation and normalization of local profile drafts.
+     * Enforces strict user isolation, structural integrity, and malformed draft eviction.
+     */
+    getValidatedProfileDraft(currentUserId) {
+      if (!currentUserId) return null;
+      try {
+        const raw = localStorage.getItem(STORAGE_KEYS.PROFILE_DRAFT);
+        if (!raw) return null;
+
+        let parsed = null;
+        try {
+          parsed = JSON.parse(raw);
+        } catch (jsonErr) {
+          console.warn('[GCT Auth] Corrupted draft JSON detected; discarding malformed entry.');
+          try { localStorage.removeItem(STORAGE_KEYS.PROFILE_DRAFT); } catch {}
+          return null;
+        }
+
+        if (!parsed || typeof parsed !== 'object') {
+          try { localStorage.removeItem(STORAGE_KEYS.PROFILE_DRAFT); } catch {}
+          return null;
+        }
+
+        // Strict User Isolation: Must match current authenticated user UUID
+        if (!parsed.userId || parsed.userId !== currentUserId) {
+          // Foreign or unassigned draft detected; purge to protect user privacy and avoid cross-account leaks
+          try { localStorage.removeItem(STORAGE_KEYS.PROFILE_DRAFT); } catch {}
+          return null;
+        }
+
+        // Must carry unsynced flag
+        if (parsed.unsynced !== true) {
+          try { localStorage.removeItem(STORAGE_KEYS.PROFILE_DRAFT); } catch {}
+          return null;
+        }
+
+        // Timestamp must be a valid, finite positive integer
+        const ts = Number(parsed.timestamp);
+        if (!Number.isFinite(ts) || ts <= 0) {
+          console.warn('[GCT Auth] Draft contains invalid timestamp; discarding.');
+          try { localStorage.removeItem(STORAGE_KEYS.PROFILE_DRAFT); } catch {}
+          return null;
+        }
+
+        // Normalization
+        const normName = typeof parsed.name === 'string' ? parsed.name.trim() : '';
+        const normBio = typeof parsed.bio === 'string' ? parsed.bio.trim() : '';
+
+        // Empty display name and empty bio: discard malformed empty draft
+        if (!normName && !normBio) {
+          console.warn('[GCT Auth] Draft contains empty name and empty bio; discarding.');
+          try { localStorage.removeItem(STORAGE_KEYS.PROFILE_DRAFT); } catch {}
+          return null;
+        }
+
+        return {
+          userId: parsed.userId,
+          name: normName,
+          bio: normBio,
+          timestamp: ts,
+          unsynced: true,
+          error: parsed.error || null
+        };
+      } catch (err) {
+        console.warn('[GCT Auth] Profile draft evaluation notice:', err);
+        return null;
+      }
+    }
+
+    /**
+     * Safe storage of local profile draft with quota protection.
+     */
+    saveProfileDraftSafely(userId, name, bio, errorMsg) {
+      if (!userId) return;
+      try {
+        const payload = JSON.stringify({
+          userId: userId,
+          name: typeof name === 'string' ? name.trim() : '',
+          bio: typeof bio === 'string' ? bio.trim() : '',
+          timestamp: Date.now(),
+          unsynced: true,
+          error: errorMsg || null
+        });
+        localStorage.setItem(STORAGE_KEYS.PROFILE_DRAFT, payload);
+      } catch (quotaErr) {
+        console.warn('[GCT Auth] Local storage write failed (quota exceeded or storage blocked):', quotaErr?.message);
+      }
     }
 
     escape(str) {
