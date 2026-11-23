@@ -299,6 +299,50 @@
       stroke: #ef4444;
     }
 
+    /* 2.1.1 Bookmark Button (Phase C) */
+    .btn-bookmark {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      padding: 8px 16px;
+      border-radius: 9999px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+
+    .btn-bookmark:hover {
+      color: #ffffff;
+      border-color: rgba(196, 181, 253, 0.4);
+      background: rgba(124, 58, 237, 0.08);
+    }
+
+    .btn-bookmark.bookmarked {
+      background: rgba(124, 58, 237, 0.15);
+      border-color: #8b5cf6;
+      color: #c4b5fd;
+    }
+
+    .btn-bookmark svg {
+      width: 15px;
+      height: 15px;
+      transition: transform 0.2s ease;
+    }
+
+    .btn-bookmark:hover svg {
+      transform: scale(1.15);
+    }
+
+    .btn-bookmark.bookmarked svg {
+      fill: #8b5cf6;
+      stroke: #8b5cf6;
+    }
+
     /* Non-interactive Engagement Indicators */
     .engagement-indicators {
       display: inline-flex;
@@ -1194,6 +1238,14 @@
                   <span id="like-count" style="font-weight: 700; color: #ffffff;">0</span>
                 </button>
 
+                <!-- 2.1.1 Bookmark button (Phase C) -->
+                <button type="button" class="btn-bookmark" id="btn-bookmark" aria-label="Bookmark publication" title="Save to bookmarks">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                  <span id="bookmark-text">Bookmark</span>
+                </button>
+
                 <!-- 2.2 Non-interactive engagement indicators -->
                 <div class="engagement-indicators" aria-label="Engagement statistics">
                   <span class="engagement-indicator font-jetbrains" title="Approved Comments">
@@ -1867,6 +1919,50 @@
             alert(`Unable to update like: ${err.message}`);
           } finally {
             likeBtn.disabled = false;
+          }
+        });
+      }
+
+      // 2.0.1 Bookmarks System (Phase C)
+      async function initBookmarks(articleId, activeSlug, activeTitle) {
+        const bookmarkBtn = document.getElementById('btn-bookmark');
+        const bookmarkTextEl = document.getElementById('bookmark-text');
+        if (!bookmarkBtn) return;
+
+        async function updateBookmarkUi() {
+          if (!window.readerClient) return;
+          const isSaved = await window.readerClient.isArticleBookmarked(articleId);
+          if (isSaved) {
+            bookmarkBtn.classList.add('bookmarked');
+            if (bookmarkTextEl) bookmarkTextEl.textContent = 'Saved';
+            bookmarkBtn.setAttribute('title', 'Remove from bookmarks');
+          } else {
+            bookmarkBtn.classList.remove('bookmarked');
+            if (bookmarkTextEl) bookmarkTextEl.textContent = 'Bookmark';
+            bookmarkBtn.setAttribute('title', 'Save to bookmarks');
+          }
+        }
+
+        await updateBookmarkUi();
+
+        window.addEventListener('gct:auth-state-changed', () => updateBookmarkUi());
+        window.addEventListener('gct:bookmark-updated', (e) => {
+          if (e.detail?.articleId === articleId) {
+            updateBookmarkUi();
+          }
+        });
+
+        bookmarkBtn.addEventListener('click', async () => {
+          if (!window.readerClient) return;
+          bookmarkBtn.disabled = true;
+          try {
+            await window.readerClient.toggleBookmark(articleId, {
+              slug: activeSlug,
+              title: activeTitle || document.title
+            });
+            await updateBookmarkUi();
+          } finally {
+            bookmarkBtn.disabled = false;
           }
         });
       }
@@ -2749,6 +2845,7 @@
                 hydrateArticle(data[0]);
                 buildTableOfContents();
                 initLikes(activeArticleId, slug);
+                initBookmarks(activeArticleId, slug, data[0].title);
                 initSharing(data[0].title, window.location.href);
                 loadRelatedPublications(slug);
                 initComments(activeArticleId, slug);

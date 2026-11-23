@@ -13,7 +13,8 @@
     GUEST_SECRET: 'gct_guest_secret',
     CONSENT: 'gct_privacy_consent_v2026',
     LIKES_CACHE: 'gct_reader_likes_cache',
-    PROFILE_DRAFT: 'gct_reader_profile_draft'
+    PROFILE_DRAFT: 'gct_reader_profile_draft',
+    BOOKMARKS_CACHE: 'gct_reader_bookmarks_cache'
   };
 
   /**
@@ -42,6 +43,7 @@
       this.session = null;
       this.guest = null;
       this.profile = null;
+      this._lastKnownCloudUpdatedAt = null;
       this._isExchangingCode = false;
       this._isSavingProfile = false;
       this.initPromise = this.init();
@@ -84,6 +86,7 @@
               }
             } else if (event === 'SIGNED_OUT') {
               this.session = null;
+              this._lastKnownCloudUpdatedAt = null;
               this.syncAuthStateAcrossUI();
               this.dispatchAuthChangeEvent(null);
             }
@@ -496,6 +499,40 @@
       }
     }
 
+    isTrustedGoogleAvatarUrl(urlStr) {
+      if (!urlStr || typeof urlStr !== 'string') return false;
+      try {
+        const parsed = new URL(urlStr);
+        if (parsed.protocol !== 'https:') return false;
+        const host = parsed.hostname.toLowerCase();
+        return host === 'googleusercontent.com' || host.endsWith('.googleusercontent.com');
+      } catch {
+        return false;
+      }
+    }
+
+    getTrustedGoogleAvatarUrl(user) {
+      if (!user) return null;
+      const meta = user.user_metadata || {};
+      const candidates = [
+        meta.avatar_url,
+        meta.picture
+      ];
+      if (Array.isArray(user.identities)) {
+        const googleIdentity = user.identities.find(i => i.provider === 'google');
+        if (googleIdentity?.identity_data) {
+          candidates.push(googleIdentity.identity_data.avatar_url);
+          candidates.push(googleIdentity.identity_data.picture);
+        }
+      }
+      for (const candidate of candidates) {
+        if (typeof candidate === 'string' && this.isTrustedGoogleAvatarUrl(candidate)) {
+          return candidate;
+        }
+      }
+      return null;
+    }
+
     getIdentity() {
       if (this.session && this.session.user) {
         const u = this.session.user;
@@ -503,11 +540,7 @@
         const fullName = meta.full_name || meta.name || u.email?.split('@')[0] || 'Authenticated Reader';
         const firstName = meta.given_name || fullName.split(' ')[0] || 'Reader';
 
-        let safeAvatarUrl = null;
-        const rawAvatar = meta.avatar_url || meta.picture || null;
-        if (typeof rawAvatar === 'string' && rawAvatar.startsWith('https://')) {
-          safeAvatarUrl = rawAvatar;
-        }
+        const safeAvatarUrl = this.getTrustedGoogleAvatarUrl(u);
 
         return {
           isAuthenticated: true,
@@ -715,6 +748,7 @@
         localStorage.removeItem('gct_reader_bio');
         this.session = null;
         this.profile = null;
+        this._lastKnownCloudUpdatedAt = null;
         this.syncAuthStateAcrossUI();
         this.dispatchAuthChangeEvent(null);
         this.showToast('Signed out. You are now participating in Guest Mode.', 'info');
@@ -788,8 +822,9 @@
       if (nameEl) nameEl.textContent = `${ident.firstName}.`;
 
       if (avatarWrap) {
-        if (ident.isAuthenticated && ident.avatarUrl) {
-          avatarWrap.innerHTML = `<img src="${this.escape(ident.avatarUrl)}" alt="${this.escape(ident.displayName)}" class="nav-user-avatar-img" />`;
+        if (ident.isAuthenticated && ident.avatarUrl && this.isTrustedGoogleAvatarUrl(ident.avatarUrl)) {
+          const initials = (ident.displayName || 'Reader').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+          avatarWrap.innerHTML = `<img src="${this.escape(ident.avatarUrl)}" alt="${this.escape(ident.displayName)}" class="nav-user-avatar-img" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\\'nav-avatar-initials font-jetbrains\\' style=\\'font-size: 13px; font-weight: 700;\\'>${this.escape(initials)}</span>';" />`;
         } else if (ident.isAuthenticated) {
           const initials = (ident.displayName || 'Reader').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
           avatarWrap.innerHTML = `<span class="nav-avatar-initials font-jetbrains" style="font-size: 13px; font-weight: 700;">${this.escape(initials)}</span>`;
@@ -1010,49 +1045,77 @@
             return;
           }
 
-          // Pre-retry / pre-save cloud conflict check against remote updates
-          const existingDraft = this.getValidatedProfileDraft(this.session.user.id);
-          if (existingDraft && this.supabase) {
-            try {
-              const { data: latestCloud, error: fetchErr } = await this.supabase
-                .from('profiles')
-                .select('updated_at')
-                .eq('id', this.session.user.id)
-                .maybeSingle();
-
-              if (!fetchErr && latestCloud?.updated_at) {
-                const cloudTime = new Date(latestCloud.updated_at).getTime();
-                if (cloudTime > existingDraft.timestamp) {
-                  console.warn('[GCT Auth] Modal save detected newer cloud profile than local draft; aborting overwrite.');
-                  this.showToast('Cloud profile was updated on another device. Please refresh to view latest changes.', 'error');
-                  return;
-                }
-              }
-            } catch (fetchEx) {
-              console.warn('[GCT Auth] Pre-save cloud conflict check notice:', fetchEx?.message);
-            }
-          }
-
           let dbPersisted = false;
           let dbErrorMessage = null;
+          let conflictDetected = false;
 
           if (this.supabase && this.session.user.id) {
             try {
               const nowIso = new Date().toISOString();
-              let dbErr = null;
-              const { data: updatedRows, error: updateErr } = await this.supabase
-                .from('profiles')
-                .update({
-                  display_name: newName,
-                  bio: newBio,
-                  updated_at: nowIso
-                })
-                .eq('id', this.session.user.id)
-                .select('id');
 
-              if (updateErr) {
-                dbErr = updateErr;
-              } else if (!updatedRows || updatedRows.length === 0) {
+              // Pre-check if _lastKnownCloudUpdatedAt is not yet cached
+              if (!this._lastKnownCloudUpdatedAt) {
+                const { data: cloudRow } = await this.supabase
+                  .from('profiles')
+                  .select('id, updated_at')
+                  .eq('id', this.session.user.id)
+                  .maybeSingle();
+                if (cloudRow?.updated_at) {
+                  this._lastKnownCloudUpdatedAt = cloudRow.updated_at;
+                }
+              }
+
+              let dbErr = null;
+
+              if (this._lastKnownCloudUpdatedAt) {
+                // ATOMIC CONDITIONAL OCC UPDATE
+                // PostgREST translates this to UPDATE public.profiles SET ... WHERE id = $1 AND updated_at = $2 RETURNING id, updated_at
+                const { data: updatedRows, error: updateErr } = await this.supabase
+                  .from('profiles')
+                  .update({
+                    display_name: newName,
+                    bio: newBio,
+                    updated_at: nowIso
+                  })
+                  .eq('id', this.session.user.id)
+                  .eq('updated_at', this._lastKnownCloudUpdatedAt)
+                  .select('id, updated_at');
+
+                if (updateErr) {
+                  dbErr = updateErr;
+                } else if (!updatedRows || updatedRows.length === 0) {
+                  // Zero rows updated: Check if row exists (OCC conflict) or was deleted
+                  const { data: existingRow } = await this.supabase
+                    .from('profiles')
+                    .select('id, updated_at')
+                    .eq('id', this.session.user.id)
+                    .maybeSingle();
+
+                  if (existingRow) {
+                    conflictDetected = true;
+                    dbErrorMessage = 'Cloud conflict: Your profile was modified in another session. Please reload to review the latest changes.';
+                  } else {
+                    const { error: insertErr } = await this.supabase
+                      .from('profiles')
+                      .insert({
+                        id: this.session.user.id,
+                        display_name: newName,
+                        bio: newBio,
+                        updated_at: nowIso
+                      });
+                    if (insertErr) {
+                      dbErr = insertErr;
+                    } else {
+                      dbPersisted = true;
+                      this._lastKnownCloudUpdatedAt = nowIso;
+                    }
+                  }
+                } else {
+                  dbPersisted = true;
+                  this._lastKnownCloudUpdatedAt = updatedRows[0].updated_at || nowIso;
+                }
+              } else {
+                // No prior row in cloud: attempt insert
                 const { error: insertErr } = await this.supabase
                   .from('profiles')
                   .insert({
@@ -1061,7 +1124,17 @@
                     bio: newBio,
                     updated_at: nowIso
                   });
-                if (insertErr) dbErr = insertErr;
+                if (insertErr) {
+                  if (insertErr.code === '23505') {
+                    conflictDetected = true;
+                    dbErrorMessage = 'Cloud conflict: Your profile was created in another session. Please reload to review latest changes.';
+                  } else {
+                    dbErr = insertErr;
+                  }
+                } else {
+                  dbPersisted = true;
+                  this._lastKnownCloudUpdatedAt = nowIso;
+                }
               }
 
               if (dbErr) {
@@ -1075,14 +1148,13 @@
                 } else {
                   dbErrorMessage = `Database error (${dbErr.code || 'sync_failed'}): ${dbErr.message || 'Unable to persist profile.'}`;
                 }
-              } else {
-                dbPersisted = true;
+              } else if (dbPersisted) {
                 this.profile = {
                   ...(this.profile || {}),
                   id: this.session.user.id,
                   display_name: newName,
                   bio: newBio,
-                  updated_at: nowIso
+                  updated_at: this._lastKnownCloudUpdatedAt || nowIso
                 };
               }
             } catch (dbEx) {
@@ -1125,7 +1197,7 @@
             this.showToast('Profile saved directly to database.', 'success');
             this.closeProfileModal();
           } else {
-            this.saveProfileDraftSafely(this.session.user.id, newName, newBio, dbErrorMessage);
+            this.saveProfileDraftSafely(this.session.user.id, newName, newBio, conflictDetected ? 'cloud_conflict' : dbErrorMessage);
             this.showToast(dbErrorMessage || 'Database synchronization failed. Changes not saved.', 'error');
           }
         } else {
@@ -1390,6 +1462,7 @@
             if (!error && data) {
               dbProfile = data;
               this.profile = data;
+              this._lastKnownCloudUpdatedAt = data.updated_at;
               if (typeof data.bio === 'string') {
                 try { localStorage.setItem('gct_reader_bio', data.bio); } catch {}
               }
@@ -1407,7 +1480,7 @@
         // 3. Resolve authoritative cloud values vs unsynced draft
         const cloudDisplayName = dbProfile?.display_name || ident.displayName;
         const cloudBio = dbProfile?.bio ?? '';
-        const effectiveAvatarUrl = dbProfile?.avatar_url || ident.avatarUrl;
+        const effectiveAvatarUrl = ident.avatarUrl;
 
         let initialName = cloudDisplayName;
         let initialBio = cloudBio;
@@ -1443,10 +1516,10 @@
         }
         if (emailEl) emailEl.textContent = ident.email;
         if (avatarEl) {
-          if (effectiveAvatarUrl) {
-            avatarEl.innerHTML = `<img src="${this.escape(effectiveAvatarUrl)}" alt="${this.escape(cloudDisplayName)}" />`;
+          const initials = (cloudDisplayName || 'Reader').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+          if (effectiveAvatarUrl && this.isTrustedGoogleAvatarUrl(effectiveAvatarUrl)) {
+            avatarEl.innerHTML = `<img src="${this.escape(effectiveAvatarUrl)}" alt="${this.escape(cloudDisplayName)}" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\\'font-jetbrains\\' style=\\'font-size: 24px; font-weight: 700;\\'>${this.escape(initials)}</span>';" />`;
           } else {
-            const initials = (cloudDisplayName || 'Reader').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
             avatarEl.innerHTML = `<span class="font-jetbrains" style="font-size: 24px; font-weight: 700;">${this.escape(initials)}</span>`;
           }
         }
@@ -1536,24 +1609,75 @@
 
               let dbPersisted = false;
               let dbErrorMessage = null;
+              let conflictDetected = false;
 
               try {
                 if (this.supabase) {
                   const nowIso = new Date().toISOString();
-                  let dbErr = null;
-                  const { data: updatedRows, error: updateErr } = await this.supabase
-                    .from('profiles')
-                    .update({
-                      display_name: newName,
-                      bio: newBio,
-                      updated_at: nowIso
-                    })
-                    .eq('id', this.session.user.id)
-                    .select('id');
 
-                  if (updateErr) {
-                    dbErr = updateErr;
-                  } else if (!updatedRows || updatedRows.length === 0) {
+                  // Pre-check if _lastKnownCloudUpdatedAt is not yet cached
+                  if (!this._lastKnownCloudUpdatedAt) {
+                    const { data: cloudRow } = await this.supabase
+                      .from('profiles')
+                      .select('id, updated_at')
+                      .eq('id', this.session.user.id)
+                      .maybeSingle();
+                    if (cloudRow?.updated_at) {
+                      this._lastKnownCloudUpdatedAt = cloudRow.updated_at;
+                    }
+                  }
+
+                  let dbErr = null;
+
+                  if (this._lastKnownCloudUpdatedAt) {
+                    // ATOMIC CONDITIONAL OCC UPDATE
+                    // PostgREST translates this to UPDATE public.profiles SET ... WHERE id = $1 AND updated_at = $2 RETURNING id, updated_at
+                    const { data: updatedRows, error: updateErr } = await this.supabase
+                      .from('profiles')
+                      .update({
+                        display_name: newName,
+                        bio: newBio,
+                        updated_at: nowIso
+                      })
+                      .eq('id', this.session.user.id)
+                      .eq('updated_at', this._lastKnownCloudUpdatedAt)
+                      .select('id, updated_at');
+
+                    if (updateErr) {
+                      dbErr = updateErr;
+                    } else if (!updatedRows || updatedRows.length === 0) {
+                      // Zero rows updated: Check if row exists (OCC conflict) or was deleted
+                      const { data: existingRow } = await this.supabase
+                        .from('profiles')
+                        .select('id, updated_at')
+                        .eq('id', this.session.user.id)
+                        .maybeSingle();
+
+                      if (existingRow) {
+                        conflictDetected = true;
+                        dbErrorMessage = 'Cloud conflict: Your profile was modified in another session. Please reload to review the latest changes.';
+                      } else {
+                        const { error: insertErr } = await this.supabase
+                          .from('profiles')
+                          .insert({
+                            id: this.session.user.id,
+                            display_name: newName,
+                            bio: newBio,
+                            updated_at: nowIso
+                          });
+                        if (insertErr) {
+                          dbErr = insertErr;
+                        } else {
+                          dbPersisted = true;
+                          this._lastKnownCloudUpdatedAt = nowIso;
+                        }
+                      }
+                    } else {
+                      dbPersisted = true;
+                      this._lastKnownCloudUpdatedAt = updatedRows[0].updated_at || nowIso;
+                    }
+                  } else {
+                    // No prior row in cloud: attempt insert
                     const { error: insertErr } = await this.supabase
                       .from('profiles')
                       .insert({
@@ -1562,7 +1686,17 @@
                         bio: newBio,
                         updated_at: nowIso
                       });
-                    if (insertErr) dbErr = insertErr;
+                    if (insertErr) {
+                      if (insertErr.code === '23505') {
+                        conflictDetected = true;
+                        dbErrorMessage = 'Cloud conflict: Your profile was created in another session. Please reload to review latest changes.';
+                      } else {
+                        dbErr = insertErr;
+                      }
+                    } else {
+                      dbPersisted = true;
+                      this._lastKnownCloudUpdatedAt = nowIso;
+                    }
                   }
 
                   if (dbErr) {
@@ -1577,14 +1711,13 @@
                     } else {
                       dbErrorMessage = `Database error (${dbErr.code || 'sync_failed'}): ${dbErr.message || 'Unable to persist profile.'}`;
                     }
-                  } else {
-                    dbPersisted = true;
+                  } else if (dbPersisted) {
                     this.profile = {
                       ...(this.profile || {}),
                       id: this.session.user.id,
                       display_name: newName,
                       bio: newBio,
-                      updated_at: nowIso
+                      updated_at: this._lastKnownCloudUpdatedAt || nowIso
                     };
                   }
                 } else {
@@ -1652,16 +1785,21 @@
                 this.showToast('Profile saved directly to database.', 'success');
                 saveGeneralBtn.textContent = 'Save Profile Changes';
               } else {
-                // FAILED DATABASE WRITE
+                // FAILED DATABASE WRITE OR OCC CONFLICT
                 // 1. NEVER display success toast
                 // 2. Preserve entered values in DOM and in local draft safely
-                this.saveProfileDraftSafely(this.session.user.id, newName, newBio, dbErrorMessage);
+                this.saveProfileDraftSafely(this.session.user.id, newName, newBio, conflictDetected ? 'cloud_conflict' : dbErrorMessage);
 
-                // 3. Explicit database synchronization error toast
+                // 3. Explicit error toast
                 this.showToast(dbErrorMessage || 'Database synchronization failed. Changes not saved to cloud.', 'error');
 
-                // 4. Reset button to allow retry
-                saveGeneralBtn.textContent = 'Retry Save Changes';
+                // 4. Button state
+                if (conflictDetected) {
+                  saveGeneralBtn.textContent = 'Reload to Resolve Conflict';
+                  saveGeneralBtn.onclick = () => window.location.reload();
+                } else {
+                  saveGeneralBtn.textContent = 'Retry Save Changes';
+                }
               }
             } finally {
               this._isSavingProfile = false;
@@ -1707,7 +1845,10 @@
         // Section 03 My Activity
         this.renderProfileActivity(ident);
 
-        // Section 04 Privacy & Data Rights
+        // Section 04 Bookmarked Publications (Phase C)
+        await this.renderBookmarksSection();
+
+        // Section 05 Privacy & Data Rights
         document.getElementById('profile-btn-export-data')?.addEventListener('click', () => this.exportPersonalData());
         document.getElementById('profile-btn-manage-consent')?.addEventListener('click', () => this.openCookiePreferences());
 
@@ -1914,6 +2055,318 @@
         this.saveConsent('reject_optional');
         this.closeCookiePreferences();
       });
+    }
+
+    /* -------------------------------------------------------------------------
+     * 7. ARTICLE BOOKMARKS CONTROLLER (Phase C)
+     * ---------------------------------------------------------------------- */
+    getBookmarksFromCache(userId) {
+      if (!userId) return [];
+      try {
+        const raw = localStorage.getItem(`${STORAGE_KEYS.BOOKMARKS_CACHE}_${userId}`);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    saveBookmarksToCache(userId, bookmarks) {
+      if (!userId) return;
+      try {
+        localStorage.setItem(`${STORAGE_KEYS.BOOKMARKS_CACHE}_${userId}`, JSON.stringify(bookmarks || []));
+      } catch (e) {
+        console.warn('[GCT Bookmarks] Local storage bookmark cache error:', e);
+      }
+    }
+
+    async isArticleBookmarked(articleId) {
+      if (!articleId) return false;
+      const ident = this.getIdentity();
+      if (!ident.isAuthenticated || !this.session?.user?.id) return false;
+      const userId = this.session.user.id;
+
+      // 1. Check local cache first
+      const cache = this.getBookmarksFromCache(userId);
+      const isCached = cache.some(b => b.article_id === articleId);
+
+      // 2. Query Supabase if connected
+      if (this.supabase) {
+        try {
+          const { data, error } = await this.supabase
+            .from('article_bookmarks')
+            .select('id, created_at')
+            .eq('user_id', userId)
+            .eq('article_id', articleId)
+            .maybeSingle();
+
+          if (!error) {
+            const isDbBookmarked = Boolean(data);
+            if (isDbBookmarked && !isCached) {
+              cache.unshift({
+                id: data.id,
+                user_id: userId,
+                article_id: articleId,
+                created_at: data.created_at
+              });
+              this.saveBookmarksToCache(userId, cache);
+            } else if (!isDbBookmarked && isCached) {
+              const filtered = cache.filter(b => b.article_id !== articleId);
+              this.saveBookmarksToCache(userId, filtered);
+              return false;
+            }
+            return isDbBookmarked;
+          }
+        } catch {}
+      }
+
+      return isCached;
+    }
+
+    async toggleBookmark(articleId, articleMeta = {}) {
+      if (!articleId) return { success: false, reason: 'missing_id' };
+
+      const ident = this.getIdentity();
+      if (!ident.isAuthenticated || !this.session?.user?.id) {
+        this.showToast('Please sign in with Google to bookmark publications.', 'info');
+        this.openProfileModal();
+        return { success: false, reason: 'unauthenticated' };
+      }
+
+      const userId = this.session.user.id;
+      let cache = this.getBookmarksFromCache(userId);
+      const existingIndex = cache.findIndex(b => b.article_id === articleId);
+      const isCurrentlyBookmarked = existingIndex !== -1;
+
+      if (isCurrentlyBookmarked) {
+        // REMOVE BOOKMARK
+        cache.splice(existingIndex, 1);
+        this.saveBookmarksToCache(userId, cache);
+
+        if (this.supabase) {
+          try {
+            await this.supabase
+              .from('article_bookmarks')
+              .delete()
+              .eq('user_id', userId)
+              .eq('article_id', articleId);
+          } catch (e) {
+            console.warn('[GCT Bookmarks] DB delete notice:', e?.message);
+          }
+        }
+
+        this.showToast('Publication removed from your bookmarks.', 'info');
+        window.dispatchEvent(new CustomEvent('gct:bookmark-updated', {
+          detail: { articleId, bookmarked: false }
+        }));
+        return { success: true, bookmarked: false };
+      } else {
+        // ADD BOOKMARK (Prevent duplicates in client and DB)
+        const bookmarkRecord = {
+          id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'bm_' + Date.now().toString(36),
+          user_id: userId,
+          article_id: articleId,
+          slug: articleMeta.slug || '',
+          title: articleMeta.title || 'Technical Publication',
+          reading_time: articleMeta.reading_time || null,
+          created_at: new Date().toISOString()
+        };
+
+        if (this.supabase) {
+          try {
+            const { data, error } = await this.supabase
+              .from('article_bookmarks')
+              .insert({
+                user_id: userId,
+                article_id: articleId
+              })
+              .select('id, created_at');
+
+            if (!error && data && data.length > 0) {
+              bookmarkRecord.id = data[0].id;
+              bookmarkRecord.created_at = data[0].created_at;
+            }
+          } catch (e) {
+            console.warn('[GCT Bookmarks] DB insert notice:', e?.message);
+          }
+        }
+
+        cache.unshift(bookmarkRecord);
+        this.saveBookmarksToCache(userId, cache);
+
+        this.showToast('Publication saved to your bookmarks.', 'success');
+        window.dispatchEvent(new CustomEvent('gct:bookmark-updated', {
+          detail: { articleId, bookmarked: true }
+        }));
+        return { success: true, bookmarked: true };
+      }
+    }
+
+    async syncLocalBookmarksToDatabase(userId) {
+      if (!userId || !this.supabase) return this.getBookmarksFromCache(userId);
+      const cached = this.getBookmarksFromCache(userId);
+
+      try {
+        // 1. Fetch existing bookmarks for this user from DB
+        const { data: dbData, error: dbErr } = await this.supabase
+          .from('article_bookmarks')
+          .select('id, article_id, created_at')
+          .eq('user_id', userId);
+
+        if (dbErr) {
+          // If table doesn't exist yet (pre-migration) or network error, return cached bookmarks safely
+          return cached;
+        }
+
+        const existingDbArticleIds = new Set((dbData || []).map(r => r.article_id));
+
+        // 2. Find local bookmarks that haven't been synchronized to the database
+        const unsynced = cached.filter(b => b.article_id && !existingDbArticleIds.has(b.article_id));
+
+        // 3. Upsert / Insert unsynced bookmarks to DB
+        for (const item of unsynced) {
+          try {
+            const { error: insErr } = await this.supabase
+              .from('article_bookmarks')
+              .insert({
+                user_id: userId,
+                article_id: item.article_id
+              });
+            if (insErr && insErr.code !== '23505' && !insErr.message?.includes('duplicate')) {
+              console.warn('[GCT Bookmarks] Sync insert warning:', item.article_id, insErr.message);
+            }
+          } catch (e) {
+            console.warn('[GCT Bookmarks] Sync insert exception:', e?.message);
+          }
+        }
+
+        // 4. Fetch the authoritative consolidated list joined with articles
+        const { data: joinedData, error: joinErr } = await this.supabase
+          .from('article_bookmarks')
+          .select(`
+            id,
+            article_id,
+            created_at,
+            articles (
+              id,
+              title,
+              slug,
+              published_at,
+              reading_time_minutes
+            )
+          `)
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
+
+        if (!joinErr && Array.isArray(joinedData)) {
+          const syncedList = joinedData
+            .filter(item => item.articles && item.articles.slug)
+            .map(item => ({
+              id: item.id,
+              user_id: userId,
+              article_id: item.article_id,
+              slug: item.articles.slug,
+              title: item.articles.title || 'Publication',
+              reading_time: item.articles.reading_time_minutes || null,
+              created_at: item.created_at,
+              is_synced: true
+            }));
+
+          // Preserve any local items that could not be joined to prevent silent data loss
+          const syncedArticleIds = new Set(syncedList.map(item => item.article_id));
+          const remainingLocal = cached.filter(item => !syncedArticleIds.has(item.article_id));
+          const consolidated = [...syncedList, ...remainingLocal];
+
+          this.saveBookmarksToCache(userId, consolidated);
+          return consolidated;
+        }
+      } catch (err) {
+        console.warn('[GCT Bookmarks] Sync cycle notice:', err?.message);
+      }
+
+      return cached;
+    }
+
+    async getBookmarkedArticles() {
+      const ident = this.getIdentity();
+      if (!ident.isAuthenticated || !this.session?.user?.id) return [];
+      const userId = this.session.user.id;
+
+      if (this.supabase) {
+        return await this.syncLocalBookmarksToDatabase(userId);
+      }
+
+      return this.getBookmarksFromCache(userId);
+    }
+
+    async renderBookmarksSection() {
+      const container = document.getElementById('profile-bookmarks-list');
+      const badge = document.getElementById('stat-bookmarks-count');
+      if (!container) return;
+
+      container.innerHTML = `
+        <div class="empty-bookmarks font-jetbrains">
+          Loading bookmarked publications...
+        </div>
+      `;
+
+      try {
+        const bookmarks = await this.getBookmarkedArticles();
+        if (badge) badge.textContent = `${bookmarks.length} Saved`;
+
+        if (bookmarks.length === 0) {
+          container.innerHTML = `
+            <div class="empty-bookmarks font-jetbrains">
+              No bookmarked publications yet. Save articles while reading to build your personal technical reference library.
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = `
+          <div class="bookmarks-list">
+            ${bookmarks.map(b => `
+              <div class="bookmark-item-card" data-article-id="${this.escape(b.article_id)}">
+                <div class="bookmark-item-info">
+                  <a href="article.html?slug=${encodeURIComponent(b.slug)}" class="bookmark-item-title font-jetbrains">
+                    ${this.escape(b.title)}
+                  </a>
+                  <div class="bookmark-item-meta">
+                    <span>Saved ${new Date(b.created_at).toLocaleDateString()}</span>
+                    ${b.reading_time ? `<span>&bull; ${b.reading_time} min read</span>` : ''}
+                  </div>
+                </div>
+                <div class="bookmark-item-actions">
+                  <a href="article.html?slug=${encodeURIComponent(b.slug)}" class="btn btn-secondary btn-sm font-jetbrains" style="font-size: 11px; padding: 4px 10px;">Read →</a>
+                  <button type="button" class="btn-remove-bookmark font-jetbrains" data-article-id="${this.escape(b.article_id)}" title="Remove bookmark">
+                    Remove
+                  </button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+
+        container.querySelectorAll('.btn-remove-bookmark').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const artId = btn.getAttribute('data-article-id');
+            if (artId) {
+              btn.disabled = true;
+              btn.textContent = 'Removing...';
+              await this.toggleBookmark(artId);
+              await this.renderBookmarksSection();
+            }
+          });
+        });
+      } catch (err) {
+        console.error('[GCT Bookmarks] Render error:', err);
+        container.innerHTML = `
+          <div class="empty-bookmarks font-jetbrains" style="color: #fca5a5;">
+            Unable to load bookmarked publications at this time.
+          </div>
+        `;
+      }
     }
 
     /**
