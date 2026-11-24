@@ -2869,11 +2869,12 @@
                   throw new Error('Supabase database endpoint is not configured.');
                 }
 
+                const authHeader = `Bearer ${window.GCTReader?.session?.access_token || cfg.anonKey}`;
                 const res = await fetch(`${cfg.supabaseUrl}/rest/v1/rpc/${rpcEndpoint}`, {
                   method: 'POST',
                   headers: {
                     apikey: cfg.anonKey,
-                    Authorization: `Bearer ${cfg.anonKey}`,
+                    Authorization: authHeader,
                     'Content-Type': 'application/json'
                   },
                   body: JSON.stringify({
