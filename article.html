@@ -185,6 +185,7 @@
       border: 1px solid var(--border-subtle);
       border-radius: 12px;
       padding: 1.25rem;
+      transition: border-color 0.2s ease;
     }
 
     .toc-card-header {
@@ -197,6 +198,41 @@
       display: flex;
       align-items: center;
       gap: 8px;
+    }
+
+    .toc-header-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toc-toggle-btn {
+      display: none;
+      background: transparent;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      padding: 0;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      font-family: inherit;
+      font-size: inherit;
+      letter-spacing: inherit;
+      text-transform: inherit;
+      text-align: left;
+    }
+
+    .toc-toggle-btn:focus-visible {
+      outline: 2px solid var(--accent-cyan);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    .toc-chevron {
+      transition: transform 0.25s ease;
+      color: var(--text-muted);
+      flex-shrink: 0;
     }
 
     .toc-list {
@@ -368,66 +404,60 @@
       flex-shrink: 0;
     }
 
-    /* Expandable Circular Write a Comment Control */
+    /* Expandable & Prominent Branded Write a Comment Control */
     .btn-write-comment {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      height: 34px;
-      width: 34px;
+      gap: 7px;
+      height: 36px;
+      padding: 0 14px;
       border-radius: 9999px;
-      background: transparent;
+      background: rgba(255, 255, 255, 0.04);
       border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
-      color: var(--text-secondary, #a1a1aa);
+      color: var(--text-primary, #ffffff);
       cursor: pointer;
-      padding: 0;
-      overflow: hidden;
-      white-space: nowrap;
-      transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-                  padding 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-                  background 0.2s ease,
-                  border-color 0.2s ease,
-                  color 0.2s ease;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
       vertical-align: middle;
       text-decoration: none;
       box-sizing: border-box;
+      white-space: nowrap;
+    }
+
+    .btn-write-comment:hover {
+      background: rgba(56, 189, 248, 0.1);
+      border-color: var(--accent-cyan, #38bdf8);
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+
+    .btn-write-comment:active {
+      transform: translateY(0);
+    }
+
+    .btn-write-comment:focus-visible {
+      outline: 2px solid var(--accent-cyan, #38bdf8);
+      outline-offset: 2px;
     }
 
     .btn-write-comment .plus-icon {
       flex-shrink: 0;
+      color: var(--accent-cyan, #38bdf8);
       transition: transform 0.25s ease;
     }
 
-    .btn-write-comment .write-comment-label {
-      max-width: 0;
-      opacity: 0;
-      overflow: hidden;
-      font-size: 11px;
-      letter-spacing: 0.04em;
-      transition: max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-                  opacity 0.2s ease,
-                  margin 0.3s ease;
-      pointer-events: none;
+    .btn-write-comment:hover .plus-icon {
+      transform: rotate(90deg);
     }
 
-    @media (hover: hover) and (pointer: fine) {
-      .btn-write-comment:hover {
-        width: 155px;
-        padding: 0 14px 0 10px;
-        background: rgba(255, 255, 255, 0.05);
-        border-color: rgba(255, 255, 255, 0.3);
-        color: #ffffff;
-      }
-
-      .btn-write-comment:hover .plus-icon {
-        transform: rotate(90deg);
-      }
-
-      .btn-write-comment:hover .write-comment-label {
-        max-width: 110px;
-        opacity: 1;
-        margin-left: 6px;
-      }
+    .btn-write-comment .write-comment-label {
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      display: inline-block;
     }
 
     .share-label {
@@ -939,7 +969,32 @@
       .article-toc-sidebar {
         position: relative;
         top: 0;
-        margin-bottom: 3rem;
+        margin-bottom: 2rem;
+        max-height: none;
+      }
+      .toc-card {
+        padding: 0.875rem 1.125rem;
+      }
+      .toc-card-header {
+        margin-bottom: 0;
+      }
+      .toc-toggle-btn {
+        display: flex;
+      }
+      .toc-card.is-expanded .toc-card-header {
+        margin-bottom: 0.85rem;
+        padding-bottom: 0.65rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .toc-card.is-expanded .toc-chevron {
+        transform: rotate(180deg);
+        color: var(--accent-cyan);
+      }
+      .toc-list {
+        display: none;
+      }
+      .toc-card.is-expanded .toc-list {
+        display: flex;
       }
       .comment-form-grid {
         grid-template-columns: 1fr;
@@ -950,6 +1005,25 @@
       font-size: 1.05rem;
       line-height: 1.8;
       color: #d4d4d4;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .article-body p,
+    .article-body a,
+    .article-body li,
+    .article-body blockquote {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .article-body img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      display: block;
+      margin: 1.75rem auto;
+      box-sizing: border-box;
     }
 
     .article-body h2 {
@@ -1002,6 +1076,20 @@
       color: #e5e5e5;
       margin: 2rem 0;
       box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
+      max-width: 100%;
+      box-sizing: border-box;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .article-body table {
+      width: 100%;
+      max-width: 100%;
+      border-collapse: collapse;
+      margin: 2rem 0;
+      display: block;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      box-sizing: border-box;
     }
 
     .article-body code {
@@ -1011,6 +1099,113 @@
       font-size: 13px;
       color: var(--accent-cyan);
       font-family: "JetBrains Mono", monospace;
+    }
+
+    @media (max-width: 640px) {
+      .article-engagement-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+        padding: 1rem;
+      }
+      .engagement-left {
+        flex-wrap: wrap;
+        gap: 8px;
+        width: 100%;
+      }
+      .engagement-right {
+        flex-wrap: wrap;
+        gap: 8px;
+        width: 100%;
+        justify-content: space-between;
+      }
+      .share-buttons {
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .comment-replies-list {
+        margin-left: 0.35rem;
+        padding-left: 0.35rem;
+        border-left-width: 1.5px;
+      }
+      .comment-reply-item {
+        padding: 0.75rem 0.875rem;
+      }
+    }
+
+    /* Floating Comment Action Button */
+    .floating-comment-btn {
+      position: fixed;
+      bottom: 24px;
+      right: 76px;
+      z-index: 99980;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 15px;
+      border-radius: 9999px;
+      background: rgba(18, 20, 28, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      opacity: 0;
+      transform: translateY(12px) scale(0.95);
+      pointer-events: none;
+    }
+
+    .floating-comment-btn.is-visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    .floating-comment-btn:hover {
+      background: rgba(26, 30, 42, 0.95);
+      border-color: rgba(56, 189, 248, 0.5);
+      color: var(--accent-cyan, #38bdf8);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55), 0 0 12px rgba(56, 189, 248, 0.25);
+    }
+
+    .floating-comment-btn:active {
+      transform: translateY(0) scale(0.98);
+    }
+
+    .floating-comment-btn:focus-visible {
+      outline: 2px solid var(--accent-cyan);
+      outline-offset: 2px;
+    }
+
+    .floating-comment-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.18);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      color: var(--accent-cyan, #38bdf8);
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    @media (max-width: 640px) {
+      .floating-comment-btn {
+        right: 68px;
+        bottom: 18px;
+        padding: 8px 12px;
+        font-size: 10.5px;
+      }
     }
 
     .author-card {
@@ -1200,17 +1395,24 @@
         <div class="article-layout-grid">
           <!-- Sticky Table of Contents Sidebar -->
           <aside class="article-toc-sidebar" id="article-toc-sidebar" aria-label="Table of Contents">
-            <div class="toc-card">
+            <div class="toc-card" id="toc-card">
               <div class="toc-card-header">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="8" y1="6" x2="21" y2="6"></line>
-                  <line x1="8" y1="12" x2="21" y2="12"></line>
-                  <line x1="8" y1="18" x2="21" y2="18"></line>
-                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                </svg>
-                <span>Table of Contents</span>
+                <button type="button" class="toc-toggle-btn font-jetbrains" id="toc-toggle-btn" aria-expanded="false" aria-controls="toc-list" aria-label="Toggle Table of Contents">
+                  <span class="toc-header-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="8" y1="6" x2="21" y2="6"></line>
+                      <line x1="8" y1="12" x2="21" y2="12"></line>
+                      <line x1="8" y1="18" x2="21" y2="18"></line>
+                      <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                      <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                      <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                    </svg>
+                    <span id="toc-header-text">Table of Contents</span>
+                  </span>
+                  <svg class="toc-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </button>
               </div>
               <ul class="toc-list" id="toc-list">
                 <!-- Dynamically generated from article headings -->
@@ -1264,12 +1466,12 @@
                 </div>
 
                 <!-- 2.3 Expandable Write a Comment control -->
-                <button type="button" class="btn-write-comment" id="btn-write-comment" aria-label="Write a comment" title="Write a comment">
+                <button type="button" class="btn-write-comment" id="btn-write-comment" aria-label="Add a comment" title="Add a comment">
                   <svg class="plus-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                   </svg>
-                  <span class="write-comment-label font-jetbrains">Write a comment</span>
+                  <span class="write-comment-label font-jetbrains">Add a comment</span>
                 </button>
               </div>
 
@@ -1327,9 +1529,14 @@
 
             <!-- 01 // ARTICLE COMMENTS (Directly below Author Card) -->
             <section class="comments-section" id="comments-section">
-              <div class="comments-header">
-                <div class="comments-title font-mono">01 // ARTICLE COMMENTS</div>
-                <span id="comments-count-badge" class="font-mono text-2xs uppercase tracking-widest text-grey-400">0 Comments</span>
+              <div class="comments-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <div class="comments-title font-mono" style="margin: 0;">01 // ARTICLE COMMENTS</div>
+                  <span id="comments-count-badge" class="font-mono text-2xs uppercase tracking-widest text-grey-400">0 Comments</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-primary font-jetbrains" id="btn-open-comment-form" style="padding: 6px 14px; font-size: 11px;">
+                  Add a comment +
+                </button>
               </div>
 
               <!-- Comment Submission Form (Hidden by default, revealed via + or Reply) -->
@@ -1738,6 +1945,9 @@
       function buildTableOfContents() {
         const bodyEl = document.getElementById('article-body');
         const tocList = document.getElementById('toc-list');
+        const tocCard = document.getElementById('toc-card');
+        const tocToggleBtn = document.getElementById('toc-toggle-btn');
+        const tocHeaderText = document.getElementById('toc-header-text');
         if (!bodyEl || !tocList) return;
 
         const headings = bodyEl.querySelectorAll('h2, h3');
@@ -1747,6 +1957,17 @@
           const sidebar = document.getElementById('article-toc-sidebar');
           if (sidebar) sidebar.style.display = 'none';
           return;
+        }
+
+        if (tocHeaderText) {
+          tocHeaderText.textContent = `Table of Contents (${headings.length})`;
+        }
+
+        if (tocToggleBtn && tocCard) {
+          tocToggleBtn.onclick = () => {
+            const isExp = tocCard.classList.toggle('is-expanded');
+            tocToggleBtn.setAttribute('aria-expanded', String(isExp));
+          };
         }
 
         headings.forEach((heading, idx) => {
@@ -1765,6 +1986,10 @@
             if (target) {
               target.scrollIntoView({ behavior: 'smooth', block: 'start' });
               history.replaceState(null, '', `#${heading.id}`);
+            }
+            if (window.innerWidth <= 960 && tocCard) {
+              tocCard.classList.remove('is-expanded');
+              if (tocToggleBtn) tocToggleBtn.setAttribute('aria-expanded', 'false');
             }
           });
           li.appendChild(a);
@@ -2118,6 +2343,55 @@
           });
         }
 
+        // Wire Comments Section Header Button
+        const openFormBtn = document.getElementById('btn-open-comment-form');
+        if (openFormBtn) {
+          openFormBtn.addEventListener('click', () => {
+            const textarea = document.getElementById('comment-body');
+            if (formPanel) {
+              const isOpen = formPanel.style.display !== 'none';
+              formPanel.style.display = isOpen ? 'none' : 'block';
+              if (!isOpen) {
+                prefillCommentAuthor();
+                formPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                formPanel.classList.add('highlight-pulse');
+                setTimeout(() => formPanel.classList.remove('highlight-pulse'), 1800);
+                setTimeout(() => textarea?.focus(), 400);
+              }
+            }
+          });
+        }
+
+        // Wire Floating Comment Button
+        const floatingCommentBtn = document.getElementById('btn-floating-comment');
+        if (floatingCommentBtn) {
+          floatingCommentBtn.addEventListener('click', () => {
+            const commentsSec = document.getElementById('comments-section');
+            if (commentsSec) {
+              commentsSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            if (formPanel) {
+              formPanel.style.display = 'block';
+              prefillCommentAuthor();
+              formPanel.classList.add('highlight-pulse');
+              setTimeout(() => formPanel.classList.remove('highlight-pulse'), 1800);
+              setTimeout(() => document.getElementById('comment-body')?.focus(), 450);
+            }
+          });
+
+          // Show floating comment button when user scrolls down
+          const handleFloatingVisibility = () => {
+            const scrollY = window.scrollY || window.pageYOffset;
+            if (scrollY > 280) {
+              floatingCommentBtn.classList.add('is-visible');
+            } else {
+              floatingCommentBtn.classList.remove('is-visible');
+            }
+          };
+          window.addEventListener('scroll', handleFloatingVisibility, { passive: true });
+          handleFloatingVisibility();
+        }
+
         if (cancelCommentBtn) {
           cancelCommentBtn.addEventListener('click', () => {
             if (formPanel) {
@@ -2269,6 +2543,11 @@
             countBadge.textContent = `${total} ${total === 1 ? 'Comment' : 'Comments'}`;
           }
 
+          const floatingCountBadge = document.getElementById('floating-comment-count');
+          if (floatingCountBadge) {
+            floatingCountBadge.textContent = total;
+          }
+
           // Sort top-level comments by likes first, reply count second (exact database counts)
           roots.sort((a, b) => {
             const likesA = a.like_count || 0;
@@ -2292,8 +2571,28 @@
                 </svg>
                 <div>No public comments published yet for this research paper.</div>
                 <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Technical practitioners and systems architects are invited to begin the discourse.</div>
+                <button type="button" class="btn btn-sm btn-secondary font-jetbrains" id="btn-empty-comment-trigger" style="margin-top: 14px; padding: 7px 16px; font-size: 11px; display: inline-flex; align-items: center; gap: 6px;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  Add a comment
+                </button>
               </div>
             `;
+            const emptyTrigger = document.getElementById('btn-empty-comment-trigger');
+            if (emptyTrigger) {
+              emptyTrigger.onclick = () => {
+                if (formPanel) {
+                  formPanel.style.display = 'block';
+                  prefillCommentAuthor();
+                  formPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  formPanel.classList.add('highlight-pulse');
+                  setTimeout(() => formPanel.classList.remove('highlight-pulse'), 1800);
+                  setTimeout(() => document.getElementById('comment-body')?.focus(), 300);
+                }
+              };
+            }
             return;
           }
 
@@ -2514,14 +2813,14 @@
                   feedback.style.background = 'rgba(34, 197, 94, 0.15)';
                   feedback.style.color = '#4ade80';
                   feedback.style.border = '1px solid rgba(34, 197, 94, 0.3)';
-                  feedback.textContent = 'Your comment has been published successfully.';
-                  setTimeout(() => {
-                    const panel = document.getElementById(`reply-editor-${pid}`);
-                    if (panel) panel.style.display = 'none';
-                    feedback.style.display = 'none';
-                  }, 2500);
+                  feedback.textContent = 'Your reply has been published successfully.';
                 }
-                await fetchApprovedComments();
+                setTimeout(async () => {
+                  const panel = document.getElementById(`reply-editor-${pid}`);
+                  if (panel) panel.style.display = 'none';
+                  if (feedback) feedback.style.display = 'none';
+                  await fetchApprovedComments();
+                }, 1200);
               } catch (err) {
                 console.error('[GCT Blog] Reply submission failure:', err);
                 if (feedback) {
@@ -2566,56 +2865,65 @@
                 const cfg = window.__GCT_CONFIG__ || null;
                 const rpcEndpoint = isLiked ? 'remove_comment_like' : 'record_comment_like';
 
-                if (cfg?.supabaseUrl && cfg?.anonKey) {
-                  const res = await fetch(`${cfg.supabaseUrl}/rest/v1/rpc/${rpcEndpoint}`, {
-                    method: 'POST',
-                    headers: {
-                      apikey: cfg.anonKey,
-                      Authorization: `Bearer ${cfg.anonKey}`,
-                      'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                      p_comment_id: cid,
-                      p_client_hash: fp,
-                      p_secret: secret
-                    })
-                  }).catch(() => null);
+                if (!cfg?.supabaseUrl || !cfg?.anonKey) {
+                  throw new Error('Supabase database endpoint is not configured.');
+                }
 
-                  if (res && res.ok) {
-                    const rpcData = await res.json().catch(() => null);
-                    if (rpcData && typeof rpcData.count === 'number') {
-                      curCount = rpcData.count;
-                    } else {
-                      curCount = isLiked ? Math.max(0, curCount - 1) : curCount + 1;
-                    }
+                const res = await fetch(`${cfg.supabaseUrl}/rest/v1/rpc/${rpcEndpoint}`, {
+                  method: 'POST',
+                  headers: {
+                    apikey: cfg.anonKey,
+                    Authorization: `Bearer ${cfg.anonKey}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    p_comment_id: cid,
+                    p_client_hash: fp,
+                    p_secret: secret
+                  })
+                }).catch(() => null);
+
+                let updatedSuccessfully = false;
+
+                if (res && res.ok) {
+                  const rpcData = await res.json().catch(() => null);
+                  if (rpcData && rpcData.success && typeof rpcData.count === 'number') {
+                    curCount = rpcData.count;
+                    updatedSuccessfully = true;
+                  }
+                }
+
+                if (updatedSuccessfully) {
+                  if (isLiked) {
+                    localStorage.removeItem(`gct_clike_${cid}`);
+                    btn.classList.remove('liked');
                   } else {
-                    curCount = isLiked ? Math.max(0, curCount - 1) : curCount + 1;
+                    localStorage.setItem(`gct_clike_${cid}`, '1');
+                    btn.classList.add('liked');
                   }
-                } else {
-                  curCount = isLiked ? Math.max(0, curCount - 1) : curCount + 1;
-                }
+                  if (countEl) countEl.textContent = curCount;
 
-                if (isLiked) {
-                  localStorage.removeItem(`gct_clike_${cid}`);
-                  btn.classList.remove('liked');
-                } else {
-                  localStorage.setItem(`gct_clike_${cid}`, '1');
-                  btn.classList.add('liked');
-                }
-
-                if (countEl) countEl.textContent = curCount;
-
-                // Synchronize in-memory comment tree node count
-                function syncTreeNodeCount(nodes, targetId, countVal) {
-                  for (const n of nodes) {
-                    if (n.id === targetId) { n.like_count = countVal; return true; }
-                    if (n.replies && syncTreeNodeCount(n.replies, targetId, countVal)) return true;
+                  // Synchronize in-memory comment tree node count
+                  function syncTreeNodeCount(nodes, targetId, countVal) {
+                    for (const n of nodes) {
+                      if (n.id === targetId) { n.like_count = countVal; return true; }
+                      if (n.replies && syncTreeNodeCount(n.replies, targetId, countVal)) return true;
+                    }
+                    return false;
                   }
-                  return false;
+                  syncTreeNodeCount(allApprovedComments, cid, curCount);
+                } else {
+                  // Backend rejected or RPC not migrated - do NOT falsify database state!
+                  console.warn(`[GCT Blog] Comment like toggle rejected by backend (HTTP ${res ? res.status : 'network'}).`);
+                  if (typeof window.GCTReader?.showToast === 'function') {
+                    window.GCTReader.showToast(res && res.status === 404 ? 'Comment like service is temporarily offline.' : 'Unable to register like. Please try again.', 'info');
+                  }
                 }
-                syncTreeNodeCount(allApprovedComments, cid, curCount);
               } catch (err) {
                 console.warn('[GCT Blog] Comment like toggle warning:', err);
+                if (typeof window.GCTReader?.showToast === 'function') {
+                  window.GCTReader.showToast('Network error: Could not connect to comment server.', 'error');
+                }
               } finally {
                 btn.disabled = false;
               }
@@ -2792,6 +3100,26 @@
                 FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur', 'style']
               });
               bodyEl.innerHTML = cleanHtml;
+
+              // Clean up and make raw image credit URLs readable, responsive and accessible
+              bodyEl.querySelectorAll('a').forEach(a => {
+                const text = (a.textContent || '').trim();
+                if (text.startsWith('http://') || text.startsWith('https://')) {
+                  try {
+                    const u = new URL(text);
+                    if (text.length > 35) {
+                      a.textContent = `[Source: ${u.hostname}] ↗`;
+                      a.setAttribute('title', text);
+                      a.classList.add('font-jetbrains');
+                    }
+                  } catch (e) {
+                    if (text.length > 35) {
+                      a.textContent = '[Source Link] ↗';
+                      a.setAttribute('title', text);
+                    }
+                  }
+                }
+              });
             } else {
               bodyEl.textContent = 'Sanitizer unavailable. Content cannot be safely rendered.';
             }
@@ -2901,6 +3229,15 @@
       }
     })();
   </script>
+
+  <!-- Floating Comment Trigger -->
+  <button type="button" class="floating-comment-btn font-jetbrains" id="btn-floating-comment" aria-label="View or add comments">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+    </svg>
+    <span class="floating-comment-label">Comments</span>
+    <span class="floating-comment-badge" id="floating-comment-count">0</span>
+  </button>
 
   <!-- Floating Back to Top Control -->
   <button type="button" class="back-to-top" id="btn-back-to-top" aria-label="Back to top" title="Back to top">
