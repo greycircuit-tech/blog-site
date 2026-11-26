@@ -54,6 +54,7 @@
       this.loadStoredSession();
       await this.handleOAuthCallback();
       await this.ensureSessionSynchronized();
+      await this.ensureAuthenticatedSession();
       this.ensureGuestIdentity();
       this.bindGlobalEvents();
       this.syncAuthStateAcrossUI();
@@ -113,6 +114,45 @@
           console.warn('[GCT Auth] Session synchronization notice:', err);
         }
       }
+    }
+
+    async ensureAuthenticatedSession() {
+      if (!this.supabase?.auth) return null;
+      try {
+        const { data, error } = await this.supabase.auth.getSession();
+        if (data?.session) {
+          const nowSec = Math.floor(Date.now() / 1000);
+          if (data.session.expires_at && data.session.expires_at <= nowSec) {
+            console.log('[GCT Auth] Current session expired, attempting token refresh...');
+            const { data: refreshData, error: refreshErr } = await this.supabase.auth.refreshSession();
+            if (refreshData?.session) {
+              this.session = refreshData.session;
+              return refreshData.session;
+            }
+          } else {
+            this.session = data.session;
+            return data.session;
+          }
+        }
+        // No valid session: automatically establish Supabase Anonymous Auth session
+        if (typeof this.supabase.auth.signInAnonymously === 'function') {
+          console.log('[GCT Auth] Establishing anonymous reader session via signInAnonymously()...');
+          const { data: anonData, error: anonErr } = await this.supabase.auth.signInAnonymously();
+          if (anonErr) {
+            console.warn('[GCT Auth] Anonymous sign-in notice:', anonErr.message);
+            return null;
+          }
+          if (anonData?.session) {
+            this.session = anonData.session;
+            this.syncAuthStateAcrossUI();
+            this.dispatchAuthChangeEvent(anonData.session);
+            return anonData.session;
+          }
+        }
+      } catch (err) {
+        console.warn('[GCT Auth] ensureAuthenticatedSession caught notice:', err);
+      }
+      return null;
     }
 
     async checkProviderAvailability() {
@@ -701,6 +741,25 @@
         sessionStorage.setItem('gct_oauth_return_url', returnUrl);
         sessionStorage.setItem('gct_oauth_scroll_y', String(window.scrollY || 0));
       } catch {}
+
+      // If current user is an anonymous user, link identity seamlessly to preserve interactions
+      if (this.session?.user?.is_anonymous && typeof this.supabase?.auth?.linkIdentity === 'function') {
+        try {
+          console.log('[GCT Auth] Upgrading anonymous reader account with Google OAuth via linkIdentity()...');
+          const { data: linkData, error: linkErr } = await this.supabase.auth.linkIdentity({
+            provider: 'google',
+            options: {
+              redirectTo: returnUrl
+            }
+          });
+          if (!linkErr && linkData?.url) {
+            window.location.href = linkData.url;
+            return;
+          }
+        } catch (linkEx) {
+          console.warn('[GCT Auth] linkIdentity notice, falling back to standard signInWithOAuth:', linkEx);
+        }
+      }
 
       // If Supabase client is initialized, use PKCE signInWithOAuth
       if (this.supabase && this.supabase.auth && typeof this.supabase.auth.signInWithOAuth === 'function') {

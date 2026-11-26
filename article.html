@@ -2839,25 +2839,13 @@
             });
           });
 
-          // Comment and reply like buttons
+          // Comment and reply like buttons (v2 Authenticated Architecture)
           commentList?.querySelectorAll('.comment-like-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
               const cid = btn.getAttribute('data-comment-id');
               const countEl = btn.querySelector('.comment-like-count');
               let curCount = parseInt(countEl?.textContent || '0', 10);
               const isLiked = localStorage.getItem(`gct_clike_${cid}`) === '1';
-
-              let fp = localStorage.getItem('gct_user_fp');
-              if (!fp || fp.length < 16) {
-                fp = 'gct_fp_' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Math.random().toString(36).substring(2) + Date.now().toString(36));
-                localStorage.setItem('gct_user_fp', fp);
-              }
-
-              let secret = localStorage.getItem(`gct_csec_${cid}`);
-              if (!secret || secret.length < 16) {
-                secret = 'gct_sec_' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Math.random().toString(36).substring(2) + Date.now().toString(36));
-                localStorage.setItem(`gct_csec_${cid}`, secret);
-              }
 
               btn.disabled = true;
 
@@ -2869,8 +2857,22 @@
                   throw new Error('Supabase database endpoint is not configured.');
                 }
 
-                const authHeader = `Bearer ${window.GCTReader?.session?.access_token || cfg.anonKey}`;
-                const res = await fetch(`${cfg.supabaseUrl}/rest/v1/rpc/${rpcEndpoint}`, {
+                // Ensure an authenticated session exists (anonymous or permanent)
+                let session = window.GCTReader?.session;
+                if (!session?.access_token && typeof window.GCTReader?.ensureAuthenticatedSession === 'function') {
+                  session = await window.GCTReader.ensureAuthenticatedSession();
+                }
+
+                if (!session?.access_token) {
+                  if (typeof window.GCTReader?.showToast === 'function') {
+                    window.GCTReader.showToast('Unable to establish secure reader session. Please refresh the page.', 'error');
+                  }
+                  btn.disabled = false;
+                  return;
+                }
+
+                let authHeader = `Bearer ${session.access_token}`;
+                let res = await fetch(`${cfg.supabaseUrl}/rest/v1/rpc/${rpcEndpoint}`, {
                   method: 'POST',
                   headers: {
                     apikey: cfg.anonKey,
@@ -2878,11 +2880,29 @@
                     'Content-Type': 'application/json'
                   },
                   body: JSON.stringify({
-                    p_comment_id: cid,
-                    p_client_hash: fp,
-                    p_secret: secret
+                    p_comment_id: cid
                   })
-                }).catch(() => null);
+                });
+
+                // Handle session expiration / 401 retry
+                if (res && res.status === 401 && typeof window.GCTReader?.ensureAuthenticatedSession === 'function') {
+                  console.log('[GCT Likes] 401 received, attempting session refresh and retry...');
+                  session = await window.GCTReader.ensureAuthenticatedSession();
+                  if (session?.access_token) {
+                    authHeader = `Bearer ${session.access_token}`;
+                    res = await fetch(`${cfg.supabaseUrl}/rest/v1/rpc/${rpcEndpoint}`, {
+                      method: 'POST',
+                      headers: {
+                        apikey: cfg.anonKey,
+                        Authorization: authHeader,
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({
+                        p_comment_id: cid
+                      })
+                    });
+                  }
+                }
 
                 let updatedSuccessfully = false;
 
@@ -2891,6 +2911,18 @@
                   if (rpcData && rpcData.success && typeof rpcData.count === 'number') {
                     curCount = rpcData.count;
                     updatedSuccessfully = true;
+                  } else if (rpcData && !rpcData.success && rpcData.error) {
+                    console.warn('[GCT Blog] Like operation rejected:', rpcData.error);
+                    if (typeof window.GCTReader?.showToast === 'function') {
+                      window.GCTReader.showToast(rpcData.error, 'warning');
+                    }
+                  }
+                } else if (res) {
+                  const errData = await res.json().catch(() => null);
+                  const msg = errData?.message || (res.status === 404 ? 'Comment like service is temporarily offline.' : 'Unable to register like. Please try again.');
+                  console.warn(`[GCT Blog] Like toggle HTTP ${res.status}:`, msg);
+                  if (typeof window.GCTReader?.showToast === 'function') {
+                    window.GCTReader.showToast(msg, 'warning');
                   }
                 }
 
@@ -2913,12 +2945,6 @@
                     return false;
                   }
                   syncTreeNodeCount(allApprovedComments, cid, curCount);
-                } else {
-                  // Backend rejected or RPC not migrated - do NOT falsify database state!
-                  console.warn(`[GCT Blog] Comment like toggle rejected by backend (HTTP ${res ? res.status : 'network'}).`);
-                  if (typeof window.GCTReader?.showToast === 'function') {
-                    window.GCTReader.showToast(res && res.status === 404 ? 'Comment like service is temporarily offline.' : 'Unable to register like. Please try again.', 'info');
-                  }
                 }
               } catch (err) {
                 console.warn('[GCT Blog] Comment like toggle warning:', err);
