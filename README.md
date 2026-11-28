@@ -3,7 +3,7 @@
 Official production repository for the GreyCircuit Technologies Insights, Editorial, and Blog digital platform.
 
 ## Production Environment
-- **Canonical Domain:** [https://blog.greycircuit.tech](https://blog.greycircuit.tech)
+- **Canonical Domain:** [https://blogs.greycircuit.tech](https://blogs.greycircuit.tech)
 - **Main Corporate Portal:** [https://greycircuit.tech](https://greycircuit.tech)
 - **Deployment Platform:** Cloudflare Pages
 

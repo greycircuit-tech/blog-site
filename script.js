@@ -1,6 +1,6 @@
 /* ==========================================================================
    GREY CIRCUIT TECHNOLOGIES — BLOG FRONTEND INTERACTION ENGINE (script.js)
-   Zero-dependency Vanilla ES6+ runtime for blog.greycircuit.tech.
+   Zero-dependency Vanilla ES6+ runtime for blogs.greycircuit.tech.
    ========================================================================== */
 
 (() => {

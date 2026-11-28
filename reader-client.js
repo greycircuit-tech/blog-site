@@ -703,11 +703,12 @@
             return window.location.href;
           }
         } else {
-          // Production: Strictly enforce HTTPS and approved Blog origin
-          const approvedDomain = 'blog.greycircuit.tech';
-          if (resolved.protocol !== 'https:' || resolved.hostname.toLowerCase() !== approvedDomain) {
+          // Production: Strictly enforce HTTPS and approved Blog origin (canonical: blogs.greycircuit.tech)
+          const approvedDomains = ['blogs.greycircuit.tech', 'blog.greycircuit.tech'];
+          const host = resolved.hostname.toLowerCase();
+          if (resolved.protocol !== 'https:' || !approvedDomains.includes(host)) {
             console.warn('[GCT Auth] Insecure or external redirect rejected in production:', resolved.href);
-            const safeFallback = new URL(resolved.pathname + resolved.search, `https://${approvedDomain}`);
+            const safeFallback = new URL(resolved.pathname + resolved.search, 'https://blogs.greycircuit.tech');
             return safeFallback.href;
           }
         }
