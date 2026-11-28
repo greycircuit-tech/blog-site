@@ -21,7 +21,7 @@
   --danger: #f87171;
   --mx: 50%;
   --my: 50%;
-  --container-max: 1280px;
+  --container-max: min(1340px, 92vw);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -142,8 +142,8 @@ main#main-content:focus {
    ========================================================================== */
 .back-to-top {
   position: fixed;
-  bottom: 28px;
-  right: 28px;
+  bottom: max(28px, calc(env(safe-area-inset-bottom, 0px) + 12px));
+  right: max(28px, calc(env(safe-area-inset-right, 0px) + 12px));
   width: 44px;
   height: 44px;
   border-radius: 50%;
@@ -296,7 +296,7 @@ h4 {
    ========================================================================== */
 
 .container {
-  width: min(100% - 3rem, var(--container-max));
+  width: min(100% - clamp(1.75rem, 4vw, 3.5rem), var(--container-max));
   margin-inline: auto;
 }
 
@@ -459,7 +459,7 @@ a, button, [role="button"], input[type="submit"], input[type="button"], select, 
 .dynamic-island {
   --island-h: 52px;
   position: fixed !important;
-  top: 18px !important;
+  top: max(18px, env(safe-area-inset-top, 0px)) !important;
   left: 50% !important;
   z-index: 99990 !important;
   width: max-content !important;
@@ -476,7 +476,7 @@ a, button, [role="button"], input[type="submit"], input[type="button"], select, 
 }
 
 .dynamic-island.is-scrolled {
-  top: 12px !important;
+  top: max(12px, env(safe-area-inset-top, 0px)) !important;
   background: rgba(7, 7, 7, 0.9) !important;
   border-color: rgba(255, 255, 255, 0.18) !important;
 }
@@ -2041,7 +2041,7 @@ section.bg-\[\#f5f5f2\] .border-black:hover {
 .footer-container {
   max-width: var(--container-max, 1280px);
   margin: 0 auto;
-  padding: 0 1.5rem;
+  padding: 0 clamp(1rem, 3vw, 1.5rem);
 }
 
 .footer-columns-grid {
@@ -2160,6 +2160,7 @@ section.bg-\[\#f5f5f2\] .border-black:hover {
 
 .footer-legal-links {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
 }
@@ -2168,10 +2169,10 @@ section.bg-\[\#f5f5f2\] .border-black:hover {
   opacity: 0.3;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1180px) {
   .footer-columns-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 2.5rem;
+    gap: 2.25rem;
   }
 }
 
@@ -2183,6 +2184,27 @@ section.bg-\[\#f5f5f2\] .border-black:hover {
   .footer-bottom-bar {
     flex-direction: column;
     align-items: flex-start;
+  }
+  .blog-search-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .blog-search-wrap,
+  .blog-filter-toggle-wrap {
+    width: 100%;
+  }
+  .btn-filter-toggle {
+    width: 100%;
+    justify-content: center;
+  }
+  .blog-search-input-shell {
+    width: 100%;
+    min-width: 0;
+  }
+  .blog-search-input {
+    min-width: 0;
+    width: 100%;
   }
 }
 
@@ -2403,7 +2425,8 @@ section.bg-\[\#f5f5f2\] .border-black:hover {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  width: 360px;
+  width: min(360px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
   background: #0d0d0d;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
@@ -2903,16 +2926,16 @@ section.bg-\[\#f5f5f2\] .border-black:hover {
 
   .dynamic-island {
     --island-h: 40px !important;
-    left: 12px !important;
-    right: calc(var(--nav-bar-h, 52px) + 20px) !important;
+    left: max(12px, env(safe-area-inset-left, 0px)) !important;
+    right: calc(var(--nav-bar-h, 52px) + max(20px, env(safe-area-inset-right, 0px))) !important;
     width: auto !important;
     max-width: none !important;
     transform: translate3d(0, 0, 0) !important;
-    top: 18px !important;
+    top: max(18px, env(safe-area-inset-top, 0px)) !important;
   }
 
   .dynamic-island.is-scrolled {
-    top: 12px !important;
+    top: max(12px, env(safe-area-inset-top, 0px)) !important;
   }
 
   .dynamic-island.is-hidden {
@@ -2920,15 +2943,15 @@ section.bg-\[\#f5f5f2\] .border-black:hover {
   }
 
   .reader-profile-widget {
-    top: 18px !important;
-    right: 12px !important;
+    top: max(18px, env(safe-area-inset-top, 0px)) !important;
+    right: max(12px, env(safe-area-inset-right, 0px)) !important;
     left: auto !important;
     height: var(--nav-bar-h, 52px) !important;
     transform: translate3d(0, 0, 0);
   }
 
   .reader-profile-widget.is-scrolled {
-    top: 12px !important;
+    top: max(12px, env(safe-area-inset-top, 0px)) !important;
   }
 
   .reader-profile-widget.is-hidden {
@@ -4213,3 +4236,33 @@ section.bg-\[\#f5f5f2\] .border-black:hover {
   border: 1px dashed rgba(255, 255, 255, 0.08);
   border-radius: 8px;
 }
+
+/* ==========================================================================
+   DYNAMIC RESPONSIVE ENGINE & RESOLUTION-INDEPENDENT ADAPTATION
+   ========================================================================== */
+
+@media (max-width: 380px) {
+  .island-brand span {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+  .island-contact {
+    display: none;
+  }
+}
+
+@media (min-width: 2560px) {
+  .container {
+    max-width: min(1500px, 86vw);
+    margin-inline: auto;
+  }
+}
+
+/* Safe area padding support */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+}
+

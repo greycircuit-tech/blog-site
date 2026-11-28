@@ -176,14 +176,62 @@
     });
   }
 
+  /* ------------------------------------------------------------------------
+     5. DYNAMIC RESPONSIVE ENGINE (DYNAMIC METRICS & ADAPTIVE RATIOS)
+     ------------------------------------------------------------------------ */
+  function initDynamicResponsiveEngine() {
+    const root = document.documentElement;
+    let scheduled = false;
+
+    const updateMetrics = () => {
+      scheduled = false;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const vw = window.visualViewport ? window.visualViewport.width : w;
+      const vh = window.visualViewport ? window.visualViewport.height : h;
+      const ratio = w / (h || 1);
+
+      root.style.setProperty('--vw-actual', `${Math.round(vw)}px`);
+      root.style.setProperty('--vh-actual', `${Math.round(vh)}px`);
+
+      if (ratio > 2.1) {
+        root.dataset.aspectRatio = 'ultrawide';
+      } else if (ratio > 1.25) {
+        root.dataset.aspectRatio = 'landscape';
+      } else if (ratio < 0.85) {
+        root.dataset.aspectRatio = 'portrait';
+      } else {
+        root.dataset.aspectRatio = 'standard';
+      }
+
+      root.dataset.screenHeight = h < 760 ? 'compact' : 'tall';
+      root.dataset.screenWidth = w < 480 ? 'phone' : (w < 820 ? 'tablet' : (w < 1440 ? 'laptop' : 'wide'));
+    };
+
+    const scheduleUpdate = () => {
+      if (!scheduled) {
+        scheduled = true;
+        requestAnimationFrame(updateMetrics);
+      }
+    };
+
+    window.addEventListener('resize', scheduleUpdate, { passive: true });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', scheduleUpdate, { passive: true });
+    }
+    updateMetrics();
+  }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
+      initDynamicResponsiveEngine();
       initMagneticInteractions();
       initNavigation();
       initBackToTop();
       initSkipLinkAccessibility();
     });
   } else {
+    initDynamicResponsiveEngine();
     initMagneticInteractions();
     initNavigation();
     initBackToTop();
